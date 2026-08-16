@@ -141,7 +141,7 @@ export default function App() {
         if (parsed.templateId) setTemplateId(parsed.templateId);
         if (parsed.palette) setPalette(parsed.palette);
         if (parsed.selectedFont) setSelectedFont(parsed.selectedFont);
-        if (parsed.visible) setVisible(parsed.visible);
+        if (parsed.visible) setVisible({ photo: true, summary: true, experience: true, education: true, skills: true, languages: true, tools: true, ...parsed.visible, tools: parsed.visible.tools ?? true });
       }
     } catch (e) {}
     setLoaded(true);
@@ -426,7 +426,7 @@ export default function App() {
               ))}
             </Section>
 
-            <Section title="Herramientas / Software" visible={visible.tools} onToggle={() => setVisible(v => ({ ...v, tools: !v.tools }))} onAdd={addTool} addLabel="+">
+            <Section title="Herramientas / Software" visible={visible.tools ?? true} onToggle={() => setVisible(v => ({ ...v, tools: !v.tools }))} onAdd={addTool} addLabel="+">
               {cv.tools.map((t) => (
                 <div key={t.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                   <input className="cvb-input" value={t.name} onChange={(e) => updateToolName(t.id, e.target.value)} placeholder="Ej. Excel, Power BI, SAP, Amadeus" />
@@ -529,6 +529,7 @@ function CVPreview({ data, templateId, palette, font, visible }) {
 function TplNordico({ data, palette, font, visible }) {
   const toolsList = skillNames(data.tools);
   const skillsList = skillNames(data.skills);
+  const showTools = (visible.tools ?? true) && toolsList.length > 0;
 
   return (
     <div style={{ fontFamily: font, background: "#fff", color: palette.textDark, padding: "56px 64px", boxSizing: "border-box" }}>
@@ -578,10 +579,10 @@ function TplNordico({ data, palette, font, visible }) {
       <div style={{ display: "flex", gap: 48 }}>
         <div style={{ flex: 1 }}>
           {visible.education && (
-            <div style={{ marginBottom: 32 }}>
+            <div className="page-block" style={{ marginBottom: 32 }}>
               <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 16, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Educación</h2>
               {data.education.map((ed) => (
-                <div key={ed.id} className="page-block" style={{ marginBottom: 12 }}>
+                <div key={ed.id} style={{ marginBottom: 12 }}>
                   <h3 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 2px" }}>{ed.degree}</h3>
                   <p style={{ fontSize: 12, color: palette.secondary, margin: "0 0 2px", fontWeight: 400 }}>{ed.institution}</p>
                   <p style={{ fontSize: 11, color: "#888", margin: 0, fontWeight: 400 }}>{ed.start} - {ed.end}</p>
@@ -603,7 +604,7 @@ function TplNordico({ data, palette, font, visible }) {
             </div>
           )}
 
-          {visible.tools && toolsList.length > 0 && (
+          {showTools && (
             <div className="page-block" style={{ marginBottom: 24 }}>
               <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Herramientas & Software</h2>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -635,6 +636,7 @@ function TplNordico({ data, palette, font, visible }) {
 function TplBloque({ data, palette, font, visible }) {
   const toolsList = skillNames(data.tools);
   const skillsList = skillNames(data.skills);
+  const showTools = (visible.tools ?? true) && toolsList.length > 0;
 
   return (
     <div style={{ fontFamily: font, display: "flex", minHeight: "100%", background: "#fff" }}>
@@ -656,10 +658,10 @@ function TplBloque({ data, palette, font, visible }) {
         </div>
 
         {visible.education && (
-          <div style={{ marginBottom: 32 }}>
+          <div className="page-block" style={{ marginBottom: 32 }}>
             <h3 className="page-header-avoid" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 12, letterSpacing: "1px" }}>Educación</h3>
             {data.education.map((ed) => (
-              <div key={ed.id} className="page-block" style={{ marginBottom: 12 }}>
+              <div key={ed.id} style={{ marginBottom: 12 }}>
                 <p style={{ fontSize: 12, fontWeight: 600, margin: "0 0 2px" }}>{ed.degree}</p>
                 <p style={{ fontSize: 11, color: palette.secondary, margin: "0 0 2px" }}>{ed.institution}</p>
                 <p style={{ fontSize: 10.5, color: "#888", margin: 0 }}>{ed.start} - {ed.end}</p>
@@ -715,7 +717,7 @@ function TplBloque({ data, palette, font, visible }) {
           </div>
         )}
 
-        {visible.tools && toolsList.length > 0 && (
+        {showTools && (
           <div className="page-block">
             <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 14, letterSpacing: "1px" }}>Herramientas & Software</h2>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -734,6 +736,7 @@ function TplBloque({ data, palette, font, visible }) {
 function TplATS({ data, visible }) {
   const toolsList = skillNames(data.tools);
   const skillsList = skillNames(data.skills);
+  const showTools = (visible.tools ?? true) && toolsList.length > 0;
 
   return (
     <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#222", padding: "40px", fontSize: 13, lineHeight: 1.6, background: "#fff" }}>
@@ -763,17 +766,17 @@ function TplATS({ data, visible }) {
       )}
       
       {visible.education && (
-        <div style={{ marginBottom: 16 }}>
+        <div className="page-block" style={{ marginBottom: 16 }}>
           <h2 className="page-header-avoid" style={{ fontSize: 12, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 4, marginBottom: 8, marginTop: 16, textTransform: "uppercase" }}>Educación</h2>
-          {data.education.map((ed) => (<p key={ed.id} className="page-block" style={{ margin: "0 0 4px", fontWeight: 600 }}>{ed.degree}, {ed.institution} <span style={{ fontWeight: 400 }}>({ed.start} - {ed.end})</span></p>))}
+          {data.education.map((ed) => (<p key={ed.id} style={{ margin: "0 0 4px", fontWeight: 600 }}>{ed.degree}, {ed.institution} <span style={{ fontWeight: 400 }}>({ed.start} - {ed.end})</span></p>))}
         </div>
       )}
       
-      {(visible.skills || visible.tools || visible.languages) && (
+      {(visible.skills || showTools || visible.languages) && (
         <div className="page-block" style={{ marginTop: 16 }}>
           <h2 style={{ fontSize: 12, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>Habilidades, Herramientas e Idiomas</h2>
           {visible.skills && skillsList.length > 0 && <p style={{ margin: "0 0 4px" }}><strong>Habilidades:</strong> {skillsList.join(", ")}</p>}
-          {visible.tools && toolsList.length > 0 && <p style={{ margin: "0 0 4px" }}><strong>Herramientas / Software:</strong> {toolsList.join(", ")}</p>}
+          {showTools && <p style={{ margin: "0 0 4px" }}><strong>Herramientas / Software:</strong> {toolsList.join(", ")}</p>}
           {visible.languages && <p style={{ margin: 0 }}><strong>Idiomas:</strong> {data.languages.filter(l=>l.name).map(l => `${l.name} (${l.level})`).join(", ")}</p>}
         </div>
       )}
