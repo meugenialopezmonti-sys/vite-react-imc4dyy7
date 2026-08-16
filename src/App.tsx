@@ -225,7 +225,7 @@ export default function App() {
     if (!element) return;
 
     const opt = {
-      margin: 0,
+      margin: [0.35, 0, 0.35, 0],
       filename: (cv.personal.name ? cv.personal.name.trim().replace(/\s+/g, "_") : "Mi_CV") + ".pdf",
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
@@ -255,7 +255,7 @@ export default function App() {
         .cvb-label { font-size:11px; font-weight:600; color:#6B726B; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:6px; }
         .print-area { width: 794px; min-height: 1123px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin: 0 auto; }
         
-        .page-block { break-inside: avoid !important; page-break-inside: avoid !important; }
+        .page-block { break-inside: avoid !important; page-break-inside: avoid !important; padding-top: 14px; margin-top: 6px; }
         .page-header-avoid { break-after: avoid !important; page-break-after: avoid !important; }
 
         .color-swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -532,7 +532,7 @@ function TplNordico({ data, palette, font, visible }) {
   const showTools = (visible.tools ?? true) && toolsList.length > 0;
 
   return (
-    <div style={{ fontFamily: font, background: "#fff", color: palette.textDark, padding: "56px 64px", boxSizing: "border-box" }}>
+    <div style={{ fontFamily: font, background: "#fff", color: palette.textDark, padding: "56px 64px 40px", boxSizing: "border-box" }}>
       <div className="page-block" style={{ borderBottom: `1px solid ${palette.accent}`, paddingBottom: 24, marginBottom: 32 }}>
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           {visible.photo && data.personal.photo && (
