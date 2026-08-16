@@ -1,8 +1,5 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from "react";
-import html2pdf from "html2pdf.js";
-import { Analytics } from "@vercel/analytics/react";
-import { track } from "@vercel/analytics";
 
 /* ---------- HELPERS ---------- */
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -33,7 +30,7 @@ function normalizeTools(tools) {
 
 const STORAGE_KEY = "cv-builder-state";
 
-/* ---------- ÍCONOS VECTORIALES (ESTILO APPLE) ---------- */
+/* ---------- ÍCONOS VECTORIALES ---------- */
 const IconPin = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 6 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>);
 const IconPhone = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 6 }}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>);
 const IconMail = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 6 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>);
@@ -46,7 +43,7 @@ const IconArrowDown = ({ color = "currentColor", size = 12 }) => (<svg width={si
 const IconPalette = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 6 }}><circle cx="13.5" cy="6.5" r=".5" fill={color}/><circle cx="17.5" cy="10.5" r=".5" fill={color}/><circle cx="8.5" cy="7.5" r=".5" fill={color}/><circle cx="6.5" cy="12.5" r=".5" fill={color}/><path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10c1.38 0 2.5-1.12 2.5-2.5 0-.61-.23-1.21-.64-1.67-.38-.43-.6-.98-.6-1.58 0-1.38 1.12-2.5 2.5-2.5H18c2.21 0 4-1.79 4-4 0-4.97-4.48-9-10-9z"/></svg>);
 const IconHeart = ({ color = "#C47165", size = 15 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginLeft: 6 }}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>);
 
-/* ---------- PALETAS NÓRDICAS / COLORES TIERRA ---------- */
+/* ---------- PALETAS NÓRDICAS ---------- */
 const PRESET_PALETTES = [
   { id: "terracota", name: "Terracota", primary: "#9C4235", secondary: "#C47165", accent: "#F5E9E8", textDark: "#2B2625", surface: "#FCFAF9" },
   { id: "oliva", name: "Verde Oliva", primary: "#566345", secondary: "#82916F", accent: "#EAECE6", textDark: "#262923", surface: "#F9FAF8" },
@@ -58,7 +55,7 @@ function generateCustomPalette(hex) {
   return { id: "custom", name: "Personalizado", primary: hex, secondary: `${hex}B3`, accent: `${hex}1A`, textDark: "#2B2B2B", surface: `${hex}08` };
 }
 
-/* ---------- PLANTILLAS MINIMALISTAS ---------- */
+/* ---------- PLANTILLAS ---------- */
 const TEMPLATES = [
   { id: "nordico", name: "Nórdico Minimalista", blurb: "Líneas finas, amplio espacio en blanco, sumamente elegante." },
   { id: "bloque", name: "Bloque Sutil", blurb: "Columna lateral con fondo color tierra pastel. Muy limpio." },
@@ -74,7 +71,7 @@ const FONTS = [
 const ATS_VERBS = ["Lideré", "Optimicé", "Implementé", "Reduje", "Coordiné", "Aumenté", "Diseñé", "Negocié", "Gestioné", "Desarrollé"];
 const FONT_IMPORT = "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Nunito:wght@300;400;600;700&display=swap');";
 
-/* ---------- MOTOR LOCAL DE ANÁLISIS DE RESPALDO ---------- */
+/* ---------- MOTOR DE ANÁLISIS DE RESPALDO ---------- */
 function generateFallbackAnalysis(cv) {
   const name = cv.personal.name ? cv.personal.name.split(" ")[0] : "Profesional";
   const hasMetrics = cv.experience.some(e => e.bullets.some(b => /\d+|%|\$/.test(b)));
@@ -168,7 +165,6 @@ export default function App() {
   const removeExperience = (id) => setCv((c) => ({ ...c, experience: c.experience.filter((e) => e.id !== id) }));
   const updateEducation = (id, field, value) => setCv((c) => ({ ...c, education: c.education.map((e) => (e.id === id ? { ...e, [field]: value } : e)) }));
   const addEducation = () => setCv((c) => ({ ...c, education: [...c.education, emptyEducation()] }));
-  const removeEducation = (id) => setCv((c) => ({ ...c, education: c.education.filter((e) => e.id !== id) }));
   
   const updateSkillName = (id, value) => setCv((c) => ({ ...c, skills: c.skills.map((s) => (s.id === id ? { ...s, name: value } : s)) }));
   const addSkill = () => setCv((c) => ({ ...c, skills: [...c.skills, emptySkill()] }));
@@ -182,7 +178,6 @@ export default function App() {
   const addLanguage = () => setCv((c) => ({ ...c, languages: [...c.languages, emptyLanguage()] }));
 
   const analyzeEntireCV = async () => {
-    track('Revisar_CV_Global'); // 📊 TRACKING EVENT
     setIsAiModalOpen(true);
     setAiFeedback("ANALYZING");
     try {
@@ -199,7 +194,6 @@ export default function App() {
 
   const improveBulletAI = async (expId, idx, text) => {
     if (!text.trim()) return;
-    track('Mejorar_Bullet_IA'); // 📊 TRACKING EVENT
     setLoadingAI(`${expId}-${idx}`);
     try {
       const prompt = `Reescribí esta frase para un CV profesional usando lenguaje de impacto y apto para filtros ATS. Devolvé ÚNICAMENTE la frase mejorada, sin explicaciones. Frase: "${text}"`;
@@ -219,7 +213,6 @@ export default function App() {
   };
 
   const handleDownloadPdf = () => {
-    track('Descarga_PDF', { template: templateId, color: palette.name }); // 📊 TRACKING EVENT
     setDownloading(true);
     const element = printRef.current;
     if (!element) return;
@@ -233,14 +226,18 @@ export default function App() {
       pagebreak: { mode: ['css', 'legacy'] }
     };
 
-    html2pdf().set(opt).from(element).save().then(() => setDownloading(false)).catch(() => setDownloading(false));
+    if (window.html2pdf) {
+      window.html2pdf().set(opt).from(element).save().then(() => setDownloading(false)).catch(() => setDownloading(false));
+    } else {
+      window.print();
+      setDownloading(false);
+    }
   };
 
   const currentFontFamily = FONTS.find(f => f.id === selectedFont)?.family || "'Nunito', sans-serif";
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#F4F5F4", minHeight: "100vh", position: "relative" }}>
-      <Analytics /> {/* 📊 COMPONENTE DE ANALYTICS INYECTADO */}
       <style>{`
         ${FONT_IMPORT}
         * { box-sizing: border-box; }
@@ -286,7 +283,7 @@ export default function App() {
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 24, padding: 32, alignItems: "flex-start" }}>
         
-        {/* PANEL IZQUIERDO: CONTROLES */}
+        {/* PANEL IZQUIERDO */}
         <div style={{ flex: "1 1 400px", minWidth: 320, maxWidth: 480 }}>
           
           <div style={{ background: "#fff", border: "1px solid #EAECE8", borderRadius: 12, padding: 24, marginBottom: 20 }}>
@@ -327,7 +324,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* RECOMENDACIONES CLAVE */}
           <div style={{ background: "#F9FAF8", border: "1px solid #EAECE8", borderRadius: 12, padding: 18, marginBottom: 20 }}>
             <h4 style={{ fontSize: 12, fontWeight: 800, margin: "0 0 10px", color: "#444", textTransform: "uppercase", display: "flex", alignItems: "center" }}>
               <IconSparkles color="#444" /> Recomendaciones Clave
@@ -411,7 +407,6 @@ export default function App() {
               ))}
             </Section>
 
-            {/* SECCIONES SECUNDARIAS: HABILIDADES, HERRAMIENTAS, IDIOMAS */}
             <Section title="Habilidades" visible={visible.skills} onToggle={() => setVisible(v => ({ ...v, skills: !v.skills }))} onAdd={addSkill} addLabel="+">
               {cv.skills.map((s) => (
                 <div key={s.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
@@ -441,7 +436,6 @@ export default function App() {
               ))}
             </Section>
             
-            {/* INSCRIPCIÓN FINAL */}
             <div style={{ textAlign: "center", padding: "24px 0 12px", color: "#777", fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center" }}>
               Espero te sirva. Muchos éxitos. <IconHeart color={palette.secondary} />
             </div>
@@ -449,7 +443,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* PANEL DERECHO: PREVIEW A4 ESTRICTO */}
+        {/* PANEL DERECHO */}
         <div style={{ flex: "2 1 520px", minWidth: 320, overflowX: "auto", display: "flex", justifyContent: "center", paddingBottom: 60 }}>
           <div ref={printRef} className="print-area">
             <CVPreview data={cv} templateId={templateId} palette={palette} font={currentFontFamily} visible={visible} />
@@ -521,17 +515,13 @@ function CVPreview({ data, templateId, palette, font, visible }) {
   return <TplNordico data={data} palette={palette} font={font} visible={visible} />;
 }
 
-/* -----------------------------------------------------------------
-   1. NÓRDICO MINIMALISTA
------------------------------------------------------------------ */
+/* 1. NÓRDICO MINIMALISTA */
 function TplNordico({ data, palette, font, visible }) {
   const toolsList = skillNames(data.tools);
   const skillsList = skillNames(data.skills);
 
   return (
     <div style={{ fontFamily: font, background: "#fff", color: palette.textDark, padding: "56px 64px", boxSizing: "border-box" }}>
-      
-      {/* HEADER LIMPIO */}
       <div className="page-block" style={{ borderBottom: `1px solid ${palette.accent}`, paddingBottom: 24, marginBottom: 32 }}>
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           {visible.photo && data.personal.photo && (
@@ -556,7 +546,6 @@ function TplNordico({ data, palette, font, visible }) {
         </div>
       )}
 
-      {/* EXPERIENCIA A LO ANCHO */}
       {visible.experience && (
         <div style={{ marginBottom: 40 }}>
           <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 20, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>
@@ -576,7 +565,6 @@ function TplNordico({ data, palette, font, visible }) {
         </div>
       )}
 
-      {/* EDUCACION Y HABILIDADES/HERRAMIENTAS A 2 COLUMNAS ABAJO */}
       <div style={{ display: "flex", gap: 48 }}>
         <div style={{ flex: 1 }}>
           {visible.education && (
@@ -633,17 +621,13 @@ function TplNordico({ data, palette, font, visible }) {
   );
 }
 
-/* -----------------------------------------------------------------
-   2. BLOQUE SUTIL
------------------------------------------------------------------ */
+/* 2. BLOQUE SUTIL */
 function TplBloque({ data, palette, font, visible }) {
   const toolsList = skillNames(data.tools);
   const skillsList = skillNames(data.skills);
 
   return (
     <div style={{ fontFamily: font, display: "flex", minHeight: "100%", background: "#fff" }}>
-      
-      {/* SIDEBAR */}
       <div style={{ width: "32%", background: palette.surface, padding: "48px 32px", color: palette.textDark, display: "flex", flexDirection: "column" }}>
         <div className="page-block" style={{ textAlign: "center", marginBottom: 32 }}>
           {visible.photo && data.personal.photo && (
@@ -687,7 +671,6 @@ function TplBloque({ data, palette, font, visible }) {
         )}
       </div>
       
-      {/* MAIN CONTENT */}
       <div style={{ width: "68%", padding: "48px 40px", color: palette.textDark }}>
         {visible.summary && data.summary && (
           <div className="page-block" style={{ marginBottom: 36 }}>
@@ -737,9 +720,7 @@ function TplBloque({ data, palette, font, visible }) {
   );
 }
 
-/* -----------------------------------------------------------------
-   3. ATS (Blanco y Negro Tradicional)
------------------------------------------------------------------ */
+/* 3. ATS ESTRICTO */
 function TplATS({ data, visible }) {
   const toolsList = skillNames(data.tools);
   const skillsList = skillNames(data.skills);
