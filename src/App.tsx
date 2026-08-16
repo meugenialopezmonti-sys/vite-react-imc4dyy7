@@ -42,6 +42,7 @@ const IconArrowUp = ({ color = "currentColor", size = 12 }) => (<svg width={size
 const IconArrowDown = ({ color = "currentColor", size = 12 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>);
 const IconPalette = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 6 }}><circle cx="13.5" cy="6.5" r=".5" fill={color}/><circle cx="17.5" cy="10.5" r=".5" fill={color}/><circle cx="8.5" cy="7.5" r=".5" fill={color}/><circle cx="6.5" cy="12.5" r=".5" fill={color}/><path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10c1.38 0 2.5-1.12 2.5-2.5 0-.61-.23-1.21-.64-1.67-.38-.43-.6-.98-.6-1.58 0-1.38 1.12-2.5 2.5-2.5H18c2.21 0 4-1.79 4-4 0-4.97-4.48-9-10-9z"/></svg>);
 const IconHeart = ({ color = "#C47165", size = 15 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginLeft: 6 }}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>);
+const IconTrash = ({ color = "#888", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 4 }}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>);
 
 /* ---------- PALETAS NÓRDICAS ---------- */
 const PRESET_PALETTES = [
@@ -69,7 +70,6 @@ const FONTS = [
 ];
 
 const ATS_VERBS = ["Lideré", "Optimicé", "Implementé", "Reduje", "Coordiné", "Aumenté", "Diseñé", "Negocié", "Gestioné", "Desarrollé"];
-const FONT_IMPORT = "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Nunito:wght@300;400;600;700&display=swap');";
 
 /* ---------- MOTOR DE ANÁLISIS DE RESPALDO ---------- */
 function generateFallbackAnalysis(cv) {
@@ -154,6 +154,13 @@ export default function App() {
     return () => clearTimeout(saveTimer.current);
   }, [cv, templateId, palette, selectedFont, visible, loaded]);
 
+  const handleResetCV = () => {
+    if (window.confirm("¿Seguro que querés borrar todo el contenido y empezar un CV desde cero?")) {
+      localStorage.removeItem(STORAGE_KEY);
+      setCv(emptyCV());
+    }
+  };
+
   const updatePersonal = (field, value) => setCv((c) => ({ ...c, personal: { ...c.personal, [field]: value } }));
   const moveExperience = (index, direction) => { const newExp = [...cv.experience]; const targetIdx = direction === "up" ? index - 1 : index + 1; if (targetIdx < 0 || targetIdx >= newExp.length) return; [newExp[index], newExp[targetIdx]] = [newExp[targetIdx], newExp[index]]; setCv((c) => ({ ...c, experience: newExp })); };
   const moveEducation = (index, direction) => { const newEd = [...cv.education]; const targetIdx = direction === "up" ? index - 1 : index + 1; if (targetIdx < 0 || targetIdx >= newEd.length) return; [newEd[index], newEd[targetIdx]] = [newEd[targetIdx], newEd[index]]; setCv((c) => ({ ...c, education: newEd })); };
@@ -237,21 +244,21 @@ export default function App() {
   const currentFontFamily = FONTS.find(f => f.id === selectedFont)?.family || "'Nunito', sans-serif";
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", background: "#F4F5F4", minHeight: "100vh", position: "relative" }}>
+    <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", background: "#F4F5F4", minHeight: "100vh", position: "relative", color: "#4A4A4A" }}>
       <style>{`
-        ${FONT_IMPORT}
         * { box-sizing: border-box; }
-        .cvb-btn { cursor:pointer; border:none; border-radius:6px; font-weight:600; transition:all .2s; display:inline-flex; align-items:center; justify-content:center; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
+        .cvb-btn { cursor:pointer; border:none; border-radius:6px; font-weight:500; transition:all .2s; display:inline-flex; align-items:center; justify-content:center; }
         .cvb-btn:hover { opacity:.85; transform: translateY(-1px); }
-        .cvb-input { width:100%; border:1px solid #E2E4E2; border-radius:6px; padding:10px 12px; font-size:14px; font-family:'Inter',sans-serif; background: #FCFCFC; color: #333; }
+        .cvb-input { width:100%; border:1px solid #E2E4E2; border-radius:6px; padding:10px 12px; font-size:13.5px; font-family:'Inter',sans-serif; background: #FCFCFC; color: #4A4A4A; font-weight:400; }
         .cvb-input:focus { outline:2px solid ${palette.primary}; outline-offset:1px; background: #fff; }
-        .cvb-label { font-size:11px; font-weight:700; color:#6B726B; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:6px; }
+        .cvb-label { font-size:11px; font-weight:600; color:#6B726B; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:6px; }
         .print-area { width: 794px; min-height: 1123px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin: 0 auto; }
         
         .page-block { break-inside: avoid !important; page-break-inside: avoid !important; }
         .page-header-avoid { break-after: avoid !important; page-break-after: avoid !important; }
 
-        .color-swatch { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .color-swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .color-swatch:hover { transform: scale(1.1); }
         .eye-btn { background: none; border: none; cursor: pointer; opacity: 0.5; padding: 0; display:flex; }
         .eye-btn:hover { opacity: 1; }
@@ -260,22 +267,25 @@ export default function App() {
         
         .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
         .modal-content { background: #fff; padding: 32px; border-radius: 16px; width: 90%; maxWidth: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-        .ai-text h3 { color: ${palette.primary}; font-size: 15px; margin: 16px 0 8px; border-bottom: 1px solid ${palette.accent}; padding-bottom: 4px; }
-        .ai-text p { font-size: 14px; line-height: 1.6; color: #444; margin: 0 0 12px; }
+        .ai-text h3 { color: ${palette.primary}; font-size: 15px; margin: 16px 0 8px; border-bottom: 1px solid ${palette.accent}; padding-bottom: 4px; font-weight:600; }
+        .ai-text p { font-size: 14px; line-height: 1.6; color: #4A4A4A; margin: 0 0 12px; }
       `}</style>
 
       {/* HEADER DE LA APP */}
-      <div style={{ padding: "22px 32px", background: "#E8E2D5", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #D8D0C0" }}>
+      <div style={{ padding: "18px 32px", background: "#E8E2D5", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #D8D0C0" }}>
         <div>
-          <h1 style={{ fontSize: 21, fontWeight: 800, margin: 0, color: "#2B2B2B", letterSpacing: "-0.5px", display: "flex", alignItems: "center" }}>
-            Impulso CV <span style={{ color: palette.primary, background: "#FFF", padding: "3px 10px", borderRadius: 12, fontSize: 11, verticalAlign: "middle", marginLeft: 10, border: `1px solid ${palette.secondary}40`, fontWeight: 700 }}>PREMIUM</span>
+          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "#2B2B2B", letterSpacing: "-0.5px", display: "flex", alignItems: "center" }}>
+            Impulso CV <span style={{ color: palette.primary, background: "#FFF", padding: "2px 8px", borderRadius: 10, fontSize: 10, verticalAlign: "middle", marginLeft: 8, border: `1px solid ${palette.secondary}40`, fontWeight: 600 }}>PREMIUM</span>
           </h1>
         </div>
-        <div style={{ display: "flex", gap: 12 }}>
-          <button className="cvb-btn" onClick={analyzeEntireCV} style={{ padding: "10px 18px", fontSize: 13, background: "#FFF", border: "1px solid #CFC7B8", color: "#333", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button className="cvb-btn" onClick={handleResetCV} style={{ padding: "8px 14px", fontSize: 12, background: "transparent", border: "1px solid #CFC7B8", color: "#666" }} title="Limpiar todos los campos">
+            <IconTrash color="#666" /> Empezar de cero
+          </button>
+          <button className="cvb-btn" onClick={analyzeEntireCV} style={{ padding: "8px 16px", fontSize: 12.5, background: "#FFF", border: "1px solid #CFC7B8", color: "#333", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
             <IconSparkles color={palette.primary} /> Revisar con IA
           </button>
-          <button className="cvb-btn" onClick={handleDownloadPdf} disabled={downloading} style={{ padding: "10px 24px", fontSize: 13, background: palette.primary, color: "#fff", opacity: downloading ? 0.6 : 1 }}>
+          <button className="cvb-btn" onClick={handleDownloadPdf} disabled={downloading} style={{ padding: "8px 20px", fontSize: 12.5, background: palette.primary, color: "#fff", opacity: downloading ? 0.6 : 1 }}>
             ⬇ Descargar PDF
           </button>
         </div>
@@ -287,7 +297,7 @@ export default function App() {
         <div style={{ flex: "1 1 400px", minWidth: 320, maxWidth: 480 }}>
           
           <div style={{ background: "#fff", border: "1px solid #EAECE8", borderRadius: 12, padding: 24, marginBottom: 20 }}>
-            <h3 style={{ fontSize: 13, fontWeight: 800, margin: "0 0 16px", color: "#2B2B2B", textTransform: "uppercase" }}>1. Estilo & Color Tierra</h3>
+            <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 16px", color: "#2B2B2B", textTransform: "uppercase", letterSpacing: "0.5px" }}>1. Estilo & Color Tierra</h3>
             
             <label className="cvb-label">Paletas Armónicas</label>
             <div style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
@@ -297,17 +307,17 @@ export default function App() {
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", background: "#F9FAF8", border: "1px solid #EAECE8", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#444" }}>
-                <IconPalette color="#444" />
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 14px", background: "#F9FAF8", border: "1px solid #EAECE8", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: 500, color: "#4A4A4A" }}>
+                <IconPalette color="#4A4A4A" />
                 <span>Elegí tu color personalizado</span>
-                <input type="color" value={palette.primary} onChange={(e) => setPalette(generateCustomPalette(e.target.value))} style={{ width: 20, height: 20, border: "none", background: "none", cursor: "pointer", padding: 0 }} />
+                <input type="color" value={palette.primary} onChange={(e) => setPalette(generateCustomPalette(e.target.value))} style={{ width: 18, height: 18, border: "none", background: "none", cursor: "pointer", padding: 0 }} />
               </label>
             </div>
 
             <label className="cvb-label">Tono de Fuente</label>
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
               {FONTS.map(f => (
-                <button key={f.id} onClick={() => setSelectedFont(f.id)} style={{ flex: 1, padding: "8px", fontSize: 12, borderRadius: 6, border: selectedFont === f.id ? `1px solid ${palette.primary}` : "1px solid #EAECE8", background: selectedFont === f.id ? palette.surface : "#fff", color: selectedFont === f.id ? palette.primary : "#666", fontWeight: selectedFont === f.id ? 700 : 500, fontFamily: f.family }}>
+                <button key={f.id} onClick={() => setSelectedFont(f.id)} style={{ flex: 1, padding: "8px", fontSize: 12, borderRadius: 6, border: selectedFont === f.id ? `1px solid ${palette.primary}` : "1px solid #EAECE8", background: selectedFont === f.id ? palette.surface : "#fff", color: selectedFont === f.id ? palette.primary : "#666", fontWeight: selectedFont === f.id ? 600 : 400, fontFamily: f.family }}>
                   {f.name}
                 </button>
               ))}
@@ -317,18 +327,18 @@ export default function App() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
               {TEMPLATES.map((t) => (
                 <div key={t.id} onClick={() => setTemplateId(t.id)} style={{ padding: "12px 14px", borderRadius: 8, background: templateId === t.id ? palette.surface : "#fff", border: templateId === t.id ? `1px solid ${palette.primary}` : "1px solid #EAECE8", cursor: "pointer", transition: "all 0.2s" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: templateId === t.id ? palette.primary : "#444" }}>{t.name}</span>
-                  <p style={{ fontSize: 11, margin: "4px 0 0", color: "#888" }}>{t.blurb}</p>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: templateId === t.id ? palette.primary : "#333" }}>{t.name}</span>
+                  <p style={{ fontSize: 11, margin: "4px 0 0", color: "#777", fontWeight: 400 }}>{t.blurb}</p>
                 </div>
               ))}
             </div>
           </div>
 
           <div style={{ background: "#F9FAF8", border: "1px solid #EAECE8", borderRadius: 12, padding: 18, marginBottom: 20 }}>
-            <h4 style={{ fontSize: 12, fontWeight: 800, margin: "0 0 10px", color: "#444", textTransform: "uppercase", display: "flex", alignItems: "center" }}>
-              <IconSparkles color="#444" /> Recomendaciones Clave
+            <h4 style={{ fontSize: 11, fontWeight: 700, margin: "0 0 10px", color: "#4A4A4A", textTransform: "uppercase", display: "flex", alignItems: "center" }}>
+              <IconSparkles color="#4A4A4A" /> Recomendaciones Clave
             </h4>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "#666", lineHeight: 1.6 }}>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#666", lineHeight: 1.6, fontWeight: 400 }}>
               <li style={{ marginBottom: 4 }}><b>Métricas:</b> Cuantificá tus logros siempre que sea posible.</li>
               <li style={{ marginBottom: 4 }}><b>Contacto:</b> Verificá que tu teléfono y mail estén correctos.</li>
               <li><b>Ortografía:</b> Una lectura atenta final suma mucho profesionalismo.</li>
@@ -339,7 +349,7 @@ export default function App() {
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <Section title="2. Datos personales" visible={visible.photo} onToggle={() => setVisible(v => ({ ...v, photo: !v.photo }))}>
               <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
-                {cv.personal.photo ? <img src={cv.personal.photo} alt="Perfil" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: `1px solid ${palette.secondary}` }} /> : <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#F4F5F4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#AAA", fontWeight: 600 }}>FOTO</div>}
+                {cv.personal.photo ? <img src={cv.personal.photo} alt="Perfil" style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover", border: `1px solid ${palette.secondary}` }} /> : <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#F4F5F4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#AAA", fontWeight: 500 }}>FOTO</div>}
                 <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e.target.files && e.target.files[0])} style={{ fontSize: 12, color: "#666" }} />
               </div>
               <Field label="Nombre completo" value={cv.personal.name} onChange={(v) => updatePersonal("name", v)} />
@@ -356,7 +366,7 @@ export default function App() {
               {cv.experience.map((exp, i) => (
                 <div key={exp.id} style={{ border: "1px solid #EAECE8", borderRadius: 8, padding: 16, marginBottom: 16, background: "#fff" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase" }}>Puesto #{i + 1}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase" }}>Puesto #{i + 1}</span>
                     <div style={{ display: "flex", gap: 6 }}>
                       <button className="arrow-btn" onClick={() => moveExperience(i, "up")} disabled={i === 0}><IconArrowUp color="#666" /></button>
                       <button className="arrow-btn" onClick={() => moveExperience(i, "down")} disabled={i === cv.experience.length - 1}><IconArrowDown color="#666" /></button>
@@ -381,10 +391,10 @@ export default function App() {
               ))}
 
               <div style={{ background: palette.surface, borderRadius: 8, padding: 14, marginTop: 12 }}>
-                <h4 style={{ fontSize: 11, fontWeight: 800, margin: "0 0 8px", color: palette.primary, textTransform: "uppercase" }}>Verbos de acción sugeridos:</h4>
+                <h4 style={{ fontSize: 11, fontWeight: 700, margin: "0 0 8px", color: palette.primary, textTransform: "uppercase" }}>Verbos de acción sugeridos:</h4>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {ATS_VERBS.map((verb, i) => (
-                    <span key={i} style={{ background: "#fff", border: `1px solid ${palette.accent}`, color: palette.secondary, fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 4 }}>{verb}</span>
+                    <span key={i} style={{ background: "#fff", border: `1px solid ${palette.accent}`, color: palette.secondary, fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 4 }}>{verb}</span>
                   ))}
                 </div>
               </div>
@@ -394,7 +404,7 @@ export default function App() {
               {cv.education.map((ed, i) => (
                 <div key={ed.id} style={{ border: "1px solid #EAECE8", borderRadius: 8, padding: 16, marginBottom: 16, background: "#fff" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase" }}>Estudio #{i + 1}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase" }}>Estudio #{i + 1}</span>
                     <div style={{ display: "flex", gap: 6 }}>
                       <button className="arrow-btn" onClick={() => moveEducation(i, "up")} disabled={i === 0}><IconArrowUp color="#666" /></button>
                       <button className="arrow-btn" onClick={() => moveEducation(i, "down")} disabled={i === cv.education.length - 1}><IconArrowDown color="#666" /></button>
@@ -436,7 +446,7 @@ export default function App() {
               ))}
             </Section>
             
-            <div style={{ textAlign: "center", padding: "24px 0 12px", color: "#777", fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ textAlign: "center", padding: "24px 0 12px", color: "#777", fontSize: 12.5, fontWeight: 400, display: "flex", alignItems: "center", justifyContent: "center" }}>
               Espero te sirva. Muchos éxitos. <IconHeart color={palette.secondary} />
             </div>
 
@@ -457,7 +467,7 @@ export default function App() {
         <div className="modal-overlay" onClick={() => setIsAiModalOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: "#2B2B2B", display: "flex", alignItems: "center" }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: "#2B2B2B", display: "flex", alignItems: "center" }}>
                 <IconSparkles color={palette.primary} size={18} /> Feedback del Reclutador
               </h2>
               <button onClick={() => setIsAiModalOpen(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#888" }}>✕</button>
@@ -465,15 +475,15 @@ export default function App() {
             
             {aiFeedback === "ANALYZING" ? (
               <div style={{ textAlign: "center", padding: "40px 0" }}>
-                <p style={{ fontSize: 15, color: palette.primary, fontWeight: 700 }}>Evaluando estructura y redacción...</p>
-                <p style={{ fontSize: 13, color: "#888" }}>Esto toma unos segundos.</p>
+                <p style={{ fontSize: 14, color: palette.primary, fontWeight: 600 }}>Evaluando estructura y redacción...</p>
+                <p style={{ fontSize: 12.5, color: "#888" }}>Esto toma unos segundos.</p>
               </div>
             ) : (
               <div className="ai-text" dangerouslySetInnerHTML={{ __html: formatMarkdown(aiFeedback) }} style={{ maxHeight: "60vh", overflowY: "auto", paddingRight: 10 }} />
             )}
             
             {aiFeedback !== "ANALYZING" && (
-              <button className="cvb-btn" onClick={() => setIsAiModalOpen(false)} style={{ width: "100%", padding: "12px", background: palette.primary, color: "#fff", marginTop: 24, fontSize: 14 }}>
+              <button className="cvb-btn" onClick={() => setIsAiModalOpen(false)} style={{ width: "100%", padding: "12px", background: palette.primary, color: "#fff", marginTop: 24, fontSize: 13.5, fontWeight: 600 }}>
                 Cerrar y aplicar cambios
               </button>
             )}
@@ -495,7 +505,7 @@ function Section({ title, children, onAdd, addLabel, visible = true, onToggle })
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: visible ? 18 : 0, alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {onToggle && <button className="eye-btn" onClick={onToggle} title={visible ? "Ocultar" : "Mostrar"}>{visible ? <IconEye color="#AAA" /> : <IconEyeOff color="#AAA" />}</button>}
-          <h3 style={{ fontSize: 12, fontWeight: 800, margin: 0, color: visible ? "#2B2B2B" : "#AAA", textTransform: "uppercase", letterSpacing: "0.5px" }}>{title}</h3>
+          <h3 style={{ fontSize: 12, fontWeight: 700, margin: 0, color: visible ? "#2B2B2B" : "#AAA", textTransform: "uppercase", letterSpacing: "0.5px" }}>{title}</h3>
         </div>
         {visible && onAdd && <button className="cvb-btn" onClick={onAdd} style={{ background: "#F4F5F4", color: "#666", fontSize: 12, padding: "4px 10px" }}>{addLabel}</button>}
       </div>
@@ -528,8 +538,8 @@ function TplNordico({ data, palette, font, visible }) {
             <img src={data.personal.photo} alt="Perfil" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover" }} />
           )}
           <div>
-            <h1 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 4px", color: palette.textDark, letterSpacing: "-0.5px" }}>{data.personal.name || "Nombre Apellido"}</h1>
-            <p style={{ fontSize: 16, color: palette.primary, fontWeight: 500, margin: "0 0 12px" }}>{data.personal.title}</p>
+            <h1 style={{ fontSize: 30, fontWeight: 600, margin: "0 0 4px", color: palette.textDark, letterSpacing: "-0.5px" }}>{data.personal.name || "Nombre Apellido"}</h1>
+            <p style={{ fontSize: 15, color: palette.primary, fontWeight: 500, margin: "0 0 12px" }}>{data.personal.title}</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", fontSize: 12, color: palette.secondary, fontWeight: 400 }}>
               {data.personal.location && <span><IconPin color={palette.secondary} size={12} />{data.personal.location}</span>}
               {data.personal.phone && <span><IconPhone color={palette.secondary} size={12} />{data.personal.phone}</span>}
@@ -542,22 +552,22 @@ function TplNordico({ data, palette, font, visible }) {
 
       {visible.summary && data.summary && (
         <div className="page-block" style={{ marginBottom: 36 }}>
-          <p style={{ fontSize: 13.5, lineHeight: 1.7, margin: 0, fontWeight: 400, color: "#444" }}>{data.summary}</p>
+          <p style={{ fontSize: 13, lineHeight: 1.7, margin: 0, fontWeight: 400, color: "#4A4A4A" }}>{data.summary}</p>
         </div>
       )}
 
       {visible.experience && (
         <div style={{ marginBottom: 40 }}>
-          <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 20, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>
+          <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 20, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>
             Experiencia Profesional
           </h2>
           {data.experience.map((e) => (
             <div key={e.id} className="page-block" style={{ marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>{e.role} <span style={{ fontWeight: 400, color: palette.secondary }}>— {e.company}</span></h3>
-                <span style={{ fontSize: 12, color: "#888" }}>{e.start} – {e.end || "Actualidad"}</span>
+                <h3 style={{ fontSize: 14.5, fontWeight: 600, margin: 0 }}>{e.role} <span style={{ fontWeight: 400, color: palette.secondary }}>— {e.company}</span></h3>
+                <span style={{ fontSize: 12, color: "#888", fontWeight: 400 }}>{e.start} – {e.end || "Actualidad"}</span>
               </div>
-              <ul style={{ margin: "8px 0 0", paddingLeft: 16, fontSize: 13, lineHeight: 1.6, color: "#555" }}>
+              <ul style={{ margin: "8px 0 0", paddingLeft: 16, fontSize: 12.5, lineHeight: 1.6, color: "#555" }}>
                 {e.bullets.filter(Boolean).map((b, i) => <li key={i} style={{ marginBottom: 4 }}>{b}</li>)}
               </ul>
             </div>
@@ -569,12 +579,12 @@ function TplNordico({ data, palette, font, visible }) {
         <div style={{ flex: 1 }}>
           {visible.education && (
             <div style={{ marginBottom: 32 }}>
-              <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 16, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Educación</h2>
+              <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 16, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Educación</h2>
               {data.education.map((ed) => (
                 <div key={ed.id} className="page-block" style={{ marginBottom: 12 }}>
-                  <h3 style={{ fontSize: 13.5, fontWeight: 600, margin: "0 0 2px" }}>{ed.degree}</h3>
-                  <p style={{ fontSize: 12.5, color: palette.secondary, margin: "0 0 2px" }}>{ed.institution}</p>
-                  <p style={{ fontSize: 11.5, color: "#888", margin: 0 }}>{ed.start} - {ed.end}</p>
+                  <h3 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 2px" }}>{ed.degree}</h3>
+                  <p style={{ fontSize: 12, color: palette.secondary, margin: "0 0 2px", fontWeight: 400 }}>{ed.institution}</p>
+                  <p style={{ fontSize: 11, color: "#888", margin: 0, fontWeight: 400 }}>{ed.start} - {ed.end}</p>
                 </div>
               ))}
             </div>
@@ -584,10 +594,10 @@ function TplNordico({ data, palette, font, visible }) {
         <div style={{ flex: 1 }}>
           {visible.skills && skillsList.length > 0 && (
             <div className="page-block" style={{ marginBottom: 24 }}>
-              <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Habilidades</h2>
+              <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Habilidades</h2>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {skillsList.map((s, i) => (
-                  <span key={i} style={{ background: palette.surface, color: palette.textDark, fontSize: 12, padding: "4px 10px", borderRadius: 4, border: `1px solid ${palette.accent}` }}>{s}</span>
+                  <span key={i} style={{ background: palette.surface, color: palette.textDark, fontSize: 11.5, padding: "4px 10px", borderRadius: 4, border: `1px solid ${palette.accent}`, fontWeight: 400 }}>{s}</span>
                 ))}
               </div>
             </div>
@@ -595,10 +605,10 @@ function TplNordico({ data, palette, font, visible }) {
 
           {visible.tools && toolsList.length > 0 && (
             <div className="page-block" style={{ marginBottom: 24 }}>
-              <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Herramientas & Software</h2>
+              <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Herramientas & Software</h2>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {toolsList.map((t, i) => (
-                  <span key={i} style={{ background: "#FFF", color: palette.textDark, fontSize: 12, padding: "4px 10px", borderRadius: 4, border: `1px solid ${palette.secondary}50` }}>{t}</span>
+                  <span key={i} style={{ background: "#FFF", color: palette.textDark, fontSize: 11.5, padding: "4px 10px", borderRadius: 4, border: `1px solid ${palette.secondary}50`, fontWeight: 400 }}>{t}</span>
                 ))}
               </div>
             </div>
@@ -606,11 +616,11 @@ function TplNordico({ data, palette, font, visible }) {
 
           {visible.languages && (
             <div className="page-block">
-              <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Idiomas</h2>
+              <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Idiomas</h2>
               {data.languages.filter(l=>l.name).map((l) => (
-                <div key={l.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4, color: "#555" }}>
-                  <span style={{ fontWeight: 600 }}>{l.name}</span>
-                  <span>{l.level}</span>
+                <div key={l.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: "#555" }}>
+                  <span style={{ fontWeight: 500 }}>{l.name}</span>
+                  <span style={{ fontWeight: 400 }}>{l.level}</span>
                 </div>
               ))}
             </div>
@@ -631,28 +641,28 @@ function TplBloque({ data, palette, font, visible }) {
       <div style={{ width: "32%", background: palette.surface, padding: "48px 32px", color: palette.textDark, display: "flex", flexDirection: "column" }}>
         <div className="page-block" style={{ textAlign: "center", marginBottom: 32 }}>
           {visible.photo && data.personal.photo && (
-             <img src={data.personal.photo} alt="Perfil" style={{ width: 110, height: 110, borderRadius: "50%", objectFit: "cover", marginBottom: 16 }} />
+             <img src={data.personal.photo} alt="Perfil" style={{ width: 100, height: 100, borderRadius: "50%", objectFit: "cover", marginBottom: 16 }} />
           )}
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px", lineHeight: 1.1 }}>{data.personal.name || "Nombre Apellido"}</h1>
-          <p style={{ fontSize: 13, fontWeight: 600, color: palette.primary, margin: 0 }}>{data.personal.title}</p>
+          <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 6px", lineHeight: 1.1 }}>{data.personal.name || "Nombre Apellido"}</h1>
+          <p style={{ fontSize: 12.5, fontWeight: 500, color: palette.primary, margin: 0 }}>{data.personal.title}</p>
         </div>
 
         <div className="page-block" style={{ marginBottom: 32 }}>
-          <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 12, letterSpacing: "1px" }}>Contacto</h3>
-          {data.personal.location && <p style={{ fontSize: 12, margin: "0 0 8px" }}><IconPin color={palette.secondary} size={12} />{data.personal.location}</p>}
-          {data.personal.phone && <p style={{ fontSize: 12, margin: "0 0 8px" }}><IconPhone color={palette.secondary} size={12} />{data.personal.phone}</p>}
-          {data.personal.email && <p style={{ fontSize: 12, margin: "0 0 8px", wordBreak: "break-all" }}><IconMail color={palette.secondary} size={12} />{data.personal.email}</p>}
-          {data.personal.linkedin && <p style={{ fontSize: 12, margin: "0 0 8px", wordBreak: "break-all" }}><IconLink color={palette.secondary} size={12} />{data.personal.linkedin}</p>}
+          <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 12, letterSpacing: "1px" }}>Contacto</h3>
+          {data.personal.location && <p style={{ fontSize: 11.5, margin: "0 0 8px" }}><IconPin color={palette.secondary} size={12} />{data.personal.location}</p>}
+          {data.personal.phone && <p style={{ fontSize: 11.5, margin: "0 0 8px" }}><IconPhone color={palette.secondary} size={12} />{data.personal.phone}</p>}
+          {data.personal.email && <p style={{ fontSize: 11.5, margin: "0 0 8px", wordBreak: "break-all" }}><IconMail color={palette.secondary} size={12} />{data.personal.email}</p>}
+          {data.personal.linkedin && <p style={{ fontSize: 11.5, margin: "0 0 8px", wordBreak: "break-all" }}><IconLink color={palette.secondary} size={12} />{data.personal.linkedin}</p>}
         </div>
 
         {visible.education && (
           <div style={{ marginBottom: 32 }}>
-            <h3 className="page-header-avoid" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 12, letterSpacing: "1px" }}>Educación</h3>
+            <h3 className="page-header-avoid" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 12, letterSpacing: "1px" }}>Educación</h3>
             {data.education.map((ed) => (
               <div key={ed.id} className="page-block" style={{ marginBottom: 12 }}>
-                <p style={{ fontSize: 12.5, fontWeight: 600, margin: "0 0 2px" }}>{ed.degree}</p>
-                <p style={{ fontSize: 11.5, color: palette.secondary, margin: "0 0 2px" }}>{ed.institution}</p>
-                <p style={{ fontSize: 11, color: "#888", margin: 0 }}>{ed.start} - {ed.end}</p>
+                <p style={{ fontSize: 12, fontWeight: 600, margin: "0 0 2px" }}>{ed.degree}</p>
+                <p style={{ fontSize: 11, color: palette.secondary, margin: "0 0 2px" }}>{ed.institution}</p>
+                <p style={{ fontSize: 10.5, color: "#888", margin: 0 }}>{ed.start} - {ed.end}</p>
               </div>
             ))}
           </div>
@@ -660,10 +670,10 @@ function TplBloque({ data, palette, font, visible }) {
 
         {visible.languages && (
           <div className="page-block">
-            <h3 className="page-header-avoid" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 12, letterSpacing: "1px" }}>Idiomas</h3>
+            <h3 className="page-header-avoid" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 12, letterSpacing: "1px" }}>Idiomas</h3>
             {data.languages.filter(l=>l.name).map((l) => (
-              <div key={l.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
-                <span style={{ fontWeight: 600 }}>{l.name}</span>
+              <div key={l.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, marginBottom: 6 }}>
+                <span style={{ fontWeight: 500 }}>{l.name}</span>
                 <span>{l.level}</span>
               </div>
             ))}
@@ -674,19 +684,19 @@ function TplBloque({ data, palette, font, visible }) {
       <div style={{ width: "68%", padding: "48px 40px", color: palette.textDark }}>
         {visible.summary && data.summary && (
           <div className="page-block" style={{ marginBottom: 36 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 800, color: palette.primary, textTransform: "uppercase", marginBottom: 12, letterSpacing: "1px" }}>Perfil Profesional</h2>
-            <p style={{ fontSize: 13.5, lineHeight: 1.65, color: "#444", margin: 0 }}>{data.summary}</p>
+            <h2 style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 12, letterSpacing: "1px" }}>Perfil Profesional</h2>
+            <p style={{ fontSize: 13, lineHeight: 1.65, color: "#4A4A4A", margin: 0 }}>{data.summary}</p>
           </div>
         )}
 
         {visible.experience && (
           <div style={{ marginBottom: 36 }}>
-            <h2 className="page-header-avoid" style={{ fontSize: 14, fontWeight: 800, color: palette.primary, textTransform: "uppercase", marginBottom: 20, letterSpacing: "1px" }}>Experiencia</h2>
+            <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 20, letterSpacing: "1px" }}>Experiencia</h2>
             {data.experience.map((e) => (
               <div key={e.id} className="page-block" style={{ marginBottom: 20 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 2px" }}>{e.role}</h3>
-                <div style={{ fontSize: 13, color: palette.secondary, fontWeight: 600, marginBottom: 6 }}>{e.company} <span style={{ color: "#888", fontWeight: 400, marginLeft: 6 }}>| {e.start} – {e.end || "Actualidad"}</span></div>
-                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13, lineHeight: 1.6, color: "#555" }}>
+                <h3 style={{ fontSize: 14.5, fontWeight: 600, margin: "0 0 2px" }}>{e.role}</h3>
+                <div style={{ fontSize: 12.5, color: palette.secondary, fontWeight: 500, marginBottom: 6 }}>{e.company} <span style={{ color: "#888", fontWeight: 400, marginLeft: 6 }}>| {e.start} – {e.end || "Actualidad"}</span></div>
+                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12.5, lineHeight: 1.6, color: "#555" }}>
                   {e.bullets.filter(Boolean).map((b, i) => <li key={i} style={{ marginBottom: 4 }}>{b}</li>)}
                 </ul>
               </div>
@@ -696,10 +706,10 @@ function TplBloque({ data, palette, font, visible }) {
 
         {visible.skills && skillsList.length > 0 && (
           <div className="page-block" style={{ marginBottom: 28 }}>
-            <h2 className="page-header-avoid" style={{ fontSize: 14, fontWeight: 800, color: palette.primary, textTransform: "uppercase", marginBottom: 14, letterSpacing: "1px" }}>Habilidades</h2>
+            <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 14, letterSpacing: "1px" }}>Habilidades</h2>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {skillsList.map((s, i) => (
-                <span key={i} style={{ border: `1px solid ${palette.accent}`, color: palette.textDark, fontSize: 12, fontWeight: 500, padding: "4px 10px", borderRadius: 4 }}>{s}</span>
+                <span key={i} style={{ border: `1px solid ${palette.accent}`, color: palette.textDark, fontSize: 11.5, fontWeight: 400, padding: "4px 10px", borderRadius: 4 }}>{s}</span>
               ))}
             </div>
           </div>
@@ -707,10 +717,10 @@ function TplBloque({ data, palette, font, visible }) {
 
         {visible.tools && toolsList.length > 0 && (
           <div className="page-block">
-            <h2 className="page-header-avoid" style={{ fontSize: 14, fontWeight: 800, color: palette.primary, textTransform: "uppercase", marginBottom: 14, letterSpacing: "1px" }}>Herramientas & Software</h2>
+            <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 14, letterSpacing: "1px" }}>Herramientas & Software</h2>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {toolsList.map((t, i) => (
-                <span key={i} style={{ background: palette.surface, border: `1px solid ${palette.accent}`, color: palette.textDark, fontSize: 12, fontWeight: 500, padding: "4px 10px", borderRadius: 4 }}>{t}</span>
+                <span key={i} style={{ background: palette.surface, border: `1px solid ${palette.accent}`, color: palette.textDark, fontSize: 11.5, fontWeight: 400, padding: "4px 10px", borderRadius: 4 }}>{t}</span>
               ))}
             </div>
           </div>
@@ -726,26 +736,26 @@ function TplATS({ data, visible }) {
   const skillsList = skillNames(data.skills);
 
   return (
-    <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#000", padding: "40px", fontSize: 13.5, lineHeight: 1.6, background: "#fff" }}>
+    <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#222", padding: "40px", fontSize: 13, lineHeight: 1.6, background: "#fff" }}>
       <div className="page-block">
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", textAlign: "center", textTransform: "uppercase" }}>{data.personal.name || "NOMBRE APELLIDO"}</h1>
-        <p style={{ margin: "0 0 8px", textAlign: "center", fontSize: 14 }}>{data.personal.title}</p>
-        <p style={{ margin: "0 0 20px", fontSize: 12, textAlign: "center" }}>{[data.personal.location, data.personal.email, data.personal.phone, data.personal.linkedin].filter(Boolean).join(" | ")}</p>
+        <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px", textAlign: "center", textTransform: "uppercase" }}>{data.personal.name || "NOMBRE APELLIDO"}</h1>
+        <p style={{ margin: "0 0 8px", textAlign: "center", fontSize: 13 }}>{data.personal.title}</p>
+        <p style={{ margin: "0 0 20px", fontSize: 11.5, textAlign: "center", color: "#555" }}>{[data.personal.location, data.personal.email, data.personal.phone, data.personal.linkedin].filter(Boolean).join(" | ")}</p>
       </div>
       
       {visible.summary && data.summary && (
         <div className="page-block">
-          <h2 style={{ fontSize: 13, fontWeight: 700, borderBottom: "1px solid #000", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>Resumen Profesional</h2>
+          <h2 style={{ fontSize: 12, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>Resumen Profesional</h2>
           <p style={{ marginBottom: 16 }}>{data.summary}</p>
         </div>
       )}
       
       {visible.experience && (
         <div style={{ marginBottom: 16 }}>
-          <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, borderBottom: "1px solid #000", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>Experiencia Laboral</h2>
+          <h2 className="page-header-avoid" style={{ fontSize: 12, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>Experiencia Laboral</h2>
           {data.experience.map((e) => (
             <div key={e.id} className="page-block" style={{ marginBottom: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, marginBottom: 2 }}><span>{e.role}, {e.company}</span><span>{e.start} - {e.end || "Actualidad"}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, marginBottom: 2 }}><span>{e.role}, {e.company}</span><span>{e.start} - {e.end || "Actualidad"}</span></div>
               <ul style={{ margin: 0, paddingLeft: 18 }}>{e.bullets.filter(Boolean).map((b, i) => <li key={i} style={{ marginBottom: 3 }}>{b}</li>)}</ul>
             </div>
           ))}
@@ -754,14 +764,14 @@ function TplATS({ data, visible }) {
       
       {visible.education && (
         <div style={{ marginBottom: 16 }}>
-          <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, borderBottom: "1px solid #000", paddingBottom: 4, marginBottom: 8, marginTop: 16, textTransform: "uppercase" }}>Educación</h2>
-          {data.education.map((ed) => (<p key={ed.id} className="page-block" style={{ margin: "0 0 4px", fontWeight: 700 }}>{ed.degree}, {ed.institution} <span style={{ fontWeight: 400 }}>({ed.start} - {ed.end})</span></p>))}
+          <h2 className="page-header-avoid" style={{ fontSize: 12, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 4, marginBottom: 8, marginTop: 16, textTransform: "uppercase" }}>Educación</h2>
+          {data.education.map((ed) => (<p key={ed.id} className="page-block" style={{ margin: "0 0 4px", fontWeight: 600 }}>{ed.degree}, {ed.institution} <span style={{ fontWeight: 400 }}>({ed.start} - {ed.end})</span></p>))}
         </div>
       )}
       
       {(visible.skills || visible.tools || visible.languages) && (
         <div className="page-block" style={{ marginTop: 16 }}>
-          <h2 style={{ fontSize: 13, fontWeight: 700, borderBottom: "1px solid #000", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>Habilidades, Herramientas e Idiomas</h2>
+          <h2 style={{ fontSize: 12, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>Habilidades, Herramientas e Idiomas</h2>
           {visible.skills && skillsList.length > 0 && <p style={{ margin: "0 0 4px" }}><strong>Habilidades:</strong> {skillsList.join(", ")}</p>}
           {visible.tools && toolsList.length > 0 && <p style={{ margin: "0 0 4px" }}><strong>Herramientas / Software:</strong> {toolsList.join(", ")}</p>}
           {visible.languages && <p style={{ margin: 0 }}><strong>Idiomas:</strong> {data.languages.filter(l=>l.name).map(l => `${l.name} (${l.level})`).join(", ")}</p>}
