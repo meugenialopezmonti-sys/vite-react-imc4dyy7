@@ -297,7 +297,7 @@ export default function App() {
         <div style={{ flex: "1 1 400px", minWidth: 320, maxWidth: 480 }}>
           
           <div style={{ background: "#fff", border: "1px solid #EAECE8", borderRadius: 12, padding: 24, marginBottom: 20 }}>
-            <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 16px", color: "#2B2B2B", textTransform: "uppercase", letterSpacing: "0.5px" }}>1. Estilo & Color Tierra</h3>
+            <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 16px", color: "#2B2B2B", textTransform: "uppercase", letterSpacing: "0.5px" }}>1. ESTILO</h3>
             
             <label className="cvb-label">Paletas Armónicas</label>
             <div style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
