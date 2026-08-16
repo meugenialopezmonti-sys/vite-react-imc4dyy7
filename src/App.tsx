@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from "react";
 import html2pdf from "html2pdf.js";
+import { Analytics } from "@vercel/analytics/react";
+import { track } from "@vercel/analytics";
 
 /* ---------- HELPERS ---------- */
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -8,6 +10,7 @@ const emptyExperience = () => ({ id: uid(), company: "", role: "", start: "", en
 const emptyEducation = () => ({ id: uid(), institution: "", degree: "", start: "", end: "" });
 const emptyLanguage = () => ({ id: uid(), name: "", level: "" });
 const emptySkill = () => ({ id: uid(), name: "", level: 4 });
+const emptyTool = () => ({ id: uid(), name: "" });
 const emptyCV = () => ({
   personal: { name: "", title: "", email: "", phone: "", location: "", linkedin: "", photo: "" },
   summary: "",
@@ -15,11 +18,17 @@ const emptyCV = () => ({
   education: [emptyEducation()],
   skills: [emptySkill()],
   languages: [emptyLanguage()],
+  tools: [emptyTool()],
 });
 
 function normalizeSkills(skills) {
   if (!skills || !skills.length) return [emptySkill()];
   return skills.map((s) => typeof s === "string" ? { id: uid(), name: s, level: 4 } : { id: s.id || uid(), name: s.name || "", level: s.level || 4 });
+}
+
+function normalizeTools(tools) {
+  if (!tools || !tools.length) return [emptyTool()];
+  return tools.map((t) => typeof t === "string" ? { id: uid(), name: t } : { id: t.id || uid(), name: t.name || "" });
 }
 
 const STORAGE_KEY = "cv-builder-state";
@@ -68,24 +77,23 @@ const FONT_IMPORT = "@import url('https://fonts.googleapis.com/css2?family=Inter
 /* ---------- MOTOR LOCAL DE ANÁLISIS DE RESPALDO ---------- */
 function generateFallbackAnalysis(cv) {
   const name = cv.personal.name ? cv.personal.name.split(" ")[0] : "Profesional";
-  const hasBullets = cv.experience.some(e => e.bullets.some(b => b.trim().length > 0));
   const hasMetrics = cv.experience.some(e => e.bullets.some(b => /\d+|%|\$/.test(b)));
   
-  let fortalezas = `Estructura clara y bien organizada. `;
-  if (cv.summary.length > 50) fortalezas += `El resumen profesional sintetiza correctamente tu perfil.`;
-  else fortalezas += `Contás con una base sólida de información en tus secciones principales.`;
+  let fortalezas = `Estructura clara y legible. `;
+  if (cv.summary.length > 50) fortalezas += `El resumen sintetiza bien tu perfil.`;
+  else fortalezas += `Información completa en tus secciones principales.`;
 
   let mejoras = `• **Cuantificá tus logros:** `;
-  if (!hasMetrics) mejoras += `Agregá porcentajes, montos o métricas en la experiencia laboral (ej. "Aumenté la eficiencia un 15%").\n\n`;
-  else mejoras += `Asegurate de que cada puesto principal tenga al menos 1 resultado medible.\n\n`;
+  if (!hasMetrics) mejoras += `Agregá porcentajes o métricas en la experiencia laboral (ej. "Aumenté la eficiencia un 15%").\n\n`;
+  else mejoras += `Asegurate de incluir al menos 1 resultado medible por puesto.\n\n`;
 
   if (cv.summary.length < 40) {
-    mejoras += `• **Ampliá tu Perfil Profesional:** Escribí 2 o 3 oraciones que resuman tus principales competencias e industria de especialización.`;
+    mejoras += `• **Ampliá tu Perfil:** Redactá 2 o 3 oraciones que resuman tus competencias e industria.`;
   } else {
-    mejoras += `• **Optimización de palabras clave:** Utilizá verbos de acción directos al inicio de cada logro (Lideré, Coordiné, Implementé).`;
+    mejoras += `• **Verbos directos:** Utilizá verbos de acción al inicio de cada logro (Lideré, Coordiné, Implementé).`;
   }
 
-  return `### Puntos Fuertes\nHola ${name}, tu currículum cuenta con un diseño muy legible y bien estructurado.\n\n### Oportunidades de Mejora\n${mejoras}\n\n### Recomendación Clave\nAdaptá los títulos de tus experiencias anteriores a la nomenclatura exacta de los puestos que estás buscando actualmente.`;
+  return `### Puntos Fuertes\nHola ${name}, tu currículum cuenta con un diseño muy limpio y ordenado.\n\n### Oportunidades de Mejora\n${mejoras}\n\n### Recomendación Clave\nAdaptá los títulos de tus experiencias anteriores a la nomenclatura exacta de los puestos que buscás actualmente.`;
 }
 
 function generateFallbackBullet(text) {
@@ -95,7 +103,7 @@ function generateFallbackBullet(text) {
   return `${randomVerb} ${clean.charAt(0).toLowerCase() + clean.slice(1)} alcanzando un alto estándar de eficiencia.`;
 }
 
-/* ---------- API IA (CON FALLBACK AUTOMÁTICO) ---------- */
+/* ---------- API IA ---------- */
 async function callClaude(prompt) {
   const API_KEY = import.meta.env?.VITE_ANTHROPIC_API_KEY || ""; 
   if (!API_KEY) throw new Error("NO_KEY");
@@ -115,7 +123,7 @@ export default function App() {
   const [templateId, setTemplateId] = useState("nordico");
   const [palette, setPalette] = useState(PRESET_PALETTES[0]); 
   const [selectedFont, setSelectedFont] = useState("nunito");
-  const [visible, setVisible] = useState({ photo: true, summary: true, experience: true, education: true, skills: true, languages: true });
+  const [visible, setVisible] = useState({ photo: true, summary: true, experience: true, education: true, skills: true, languages: true, tools: true });
   const [downloading, setDownloading] = useState(false);
   const [loadingAI, setLoadingAI] = useState(null);
   const [aiFeedback, setAiFeedback] = useState(""); 
@@ -132,7 +140,7 @@ export default function App() {
       const res = localStorage.getItem(STORAGE_KEY);
       if (res) {
         const parsed = JSON.parse(res);
-        if (parsed.cv) setCv({ ...emptyCV(), ...parsed.cv, personal: { ...emptyCV().personal, ...parsed.cv.personal }, skills: normalizeSkills(parsed.cv.skills) });
+        if (parsed.cv) setCv({ ...emptyCV(), ...parsed.cv, personal: { ...emptyCV().personal, ...parsed.cv.personal }, skills: normalizeSkills(parsed.cv.skills), tools: normalizeTools(parsed.cv.tools) });
         if (parsed.templateId) setTemplateId(parsed.templateId);
         if (parsed.palette) setPalette(parsed.palette);
         if (parsed.selectedFont) setSelectedFont(parsed.selectedFont);
@@ -161,29 +169,37 @@ export default function App() {
   const updateEducation = (id, field, value) => setCv((c) => ({ ...c, education: c.education.map((e) => (e.id === id ? { ...e, [field]: value } : e)) }));
   const addEducation = () => setCv((c) => ({ ...c, education: [...c.education, emptyEducation()] }));
   const removeEducation = (id) => setCv((c) => ({ ...c, education: c.education.filter((e) => e.id !== id) }));
+  
   const updateSkillName = (id, value) => setCv((c) => ({ ...c, skills: c.skills.map((s) => (s.id === id ? { ...s, name: value } : s)) }));
   const addSkill = () => setCv((c) => ({ ...c, skills: [...c.skills, emptySkill()] }));
   const removeSkill = (id) => setCv((c) => ({ ...c, skills: c.skills.filter((s) => s.id !== id) }));
+
+  const updateToolName = (id, value) => setCv((c) => ({ ...c, tools: c.tools.map((t) => (t.id === id ? { ...t, name: value } : t)) }));
+  const addTool = () => setCv((c) => ({ ...c, tools: [...c.tools, emptyTool()] }));
+  const removeTool = (id) => setCv((c) => ({ ...c, tools: c.tools.filter((t) => t.id !== id) }));
+
   const updateLanguage = (id, field, value) => setCv((c) => ({ ...c, languages: c.languages.map((l) => (l.id === id ? { ...l, [field]: value } : l)) }));
   const addLanguage = () => setCv((c) => ({ ...c, languages: [...c.languages, emptyLanguage()] }));
 
   const analyzeEntireCV = async () => {
+    track('Revisar_CV_Global'); // 📊 TRACKING EVENT
     setIsAiModalOpen(true);
     setAiFeedback("ANALYZING");
     try {
-      const cvText = `Nombre: ${cv.personal.name}\nPerfil: ${cv.summary}\nExperiencia: ${cv.experience.map(e => `${e.role} en ${e.company}. Logros: ${e.bullets.join('; ')}`).join(' | ')}\nEducación: ${cv.education.map(ed => ed.degree).join(', ')}\nHabilidades: ${cv.skills.map(s=>s.name).join(', ')}`;
+      const cvText = `Nombre: ${cv.personal.name}\nPerfil: ${cv.summary}\nExperiencia: ${cv.experience.map(e => `${e.role} en ${e.company}. Logros: ${e.bullets.join('; ')}`).join(' | ')}\nEducación: ${cv.education.map(ed => ed.degree).join(', ')}\nHabilidades: ${cv.skills.map(s=>s.name).join(', ')}\nHerramientas: ${cv.tools.map(t=>t.name).join(', ')}`;
       const prompt = `Actuá como un Reclutador experto. Analizá este CV y devolvé tu feedback EXACTAMENTE con esta estructura (usá formato markdown):\n\n### Puntos Fuertes\n(1 aspecto positivo)\n\n### Oportunidades de Mejora\n(2 consejos prácticos sobre redacción o estructura)\n\n### Recomendación Clave\n(Un consejo profesional breve).\n\nSé directo. CV: ${cvText}`;
       const analysis = await callClaude(prompt);
       setAiFeedback(analysis);
     } catch (e) {
       setTimeout(() => {
         setAiFeedback(generateFallbackAnalysis(cv));
-      }, 700);
+      }, 600);
     }
   };
 
   const improveBulletAI = async (expId, idx, text) => {
     if (!text.trim()) return;
+    track('Mejorar_Bullet_IA'); // 📊 TRACKING EVENT
     setLoadingAI(`${expId}-${idx}`);
     try {
       const prompt = `Reescribí esta frase para un CV profesional usando lenguaje de impacto y apto para filtros ATS. Devolvé ÚNICAMENTE la frase mejorada, sin explicaciones. Frase: "${text}"`;
@@ -203,16 +219,20 @@ export default function App() {
   };
 
   const handleDownloadPdf = () => {
+    track('Descarga_PDF', { template: templateId, color: palette.name }); // 📊 TRACKING EVENT
     setDownloading(true);
     const element = printRef.current;
     if (!element) return;
+
     const opt = {
       margin: 0,
       filename: (cv.personal.name ? cv.personal.name.trim().replace(/\s+/g, "_") : "Mi_CV") + ".pdf",
-      image: { type: 'jpeg', quality: 1 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] }
     };
+
     html2pdf().set(opt).from(element).save().then(() => setDownloading(false)).catch(() => setDownloading(false));
   };
 
@@ -220,6 +240,7 @@ export default function App() {
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#F4F5F4", minHeight: "100vh", position: "relative" }}>
+      <Analytics /> {/* 📊 COMPONENTE DE ANALYTICS INYECTADO */}
       <style>{`
         ${FONT_IMPORT}
         * { box-sizing: border-box; }
@@ -228,7 +249,11 @@ export default function App() {
         .cvb-input { width:100%; border:1px solid #E2E4E2; border-radius:6px; padding:10px 12px; font-size:14px; font-family:'Inter',sans-serif; background: #FCFCFC; color: #333; }
         .cvb-input:focus { outline:2px solid ${palette.primary}; outline-offset:1px; background: #fff; }
         .cvb-label { font-size:11px; font-weight:700; color:#6B726B; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:6px; }
-        .print-area { width: 794px; min-height: 1123px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin: 0 auto; overflow: hidden; }
+        .print-area { width: 794px; min-height: 1123px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin: 0 auto; }
+        
+        .page-block { break-inside: avoid !important; page-break-inside: avoid !important; }
+        .page-header-avoid { break-after: avoid !important; page-break-after: avoid !important; }
+
         .color-swatch { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .color-swatch:hover { transform: scale(1.1); }
         .eye-btn { background: none; border: none; cursor: pointer; opacity: 0.5; padding: 0; display:flex; }
@@ -351,7 +376,7 @@ export default function App() {
                       <button className="cvb-btn" onClick={() => improveBulletAI(exp.id, bi, b)} style={{ background: palette.surface, color: palette.primary, padding: "0 12px" }} title="Optimizar frase">
                         {loadingAI === `${exp.id}-${bi}` ? "…" : <IconSparkles color={palette.primary} />}
                       </button>
-                      <button className="cvb-btn" onClick={() => removeBullet(exp.id, bi)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
+                      <button className="cvb-btn" onClick={() => removeBullet(exp.id, bi)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 12px" }}>✕</button>
                     </div>
                   ))}
                   <button className="cvb-btn" onClick={() => addBullet(exp.id)} style={{ background: "transparent", color: palette.primary, fontSize: 12, padding: "4px 0" }}>+ Agregar logro</button>
@@ -386,21 +411,35 @@ export default function App() {
               ))}
             </Section>
 
-            <Row2>
-              <Section title="Habilidades" visible={visible.skills} onToggle={() => setVisible(v => ({ ...v, skills: !v.skills }))} onAdd={addSkill} addLabel="+">
-                {cv.skills.map((s) => (
-                  <div key={s.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}><input className="cvb-input" value={s.name} onChange={(e) => updateSkillName(s.id, e.target.value)} /><button className="cvb-btn" onClick={() => removeSkill(s.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button></div>
-                ))}
-              </Section>
-              <Section title="Idiomas" visible={visible.languages} onToggle={() => setVisible(v => ({ ...v, languages: !v.languages }))} onAdd={addLanguage} addLabel="+">
-                {cv.languages.map((l) => (
-                  <div key={l.id} style={{ marginBottom: 12 }}>
-                    <Field label="Idioma" value={l.name} onChange={(v) => updateLanguage(l.id, "name", v)} />
-                    <Field label="Nivel" value={l.level} onChange={(v) => updateLanguage(l.id, "level", v)} />
-                  </div>
-                ))}
-              </Section>
-            </Row2>
+            {/* SECCIONES SECUNDARIAS: HABILIDADES, HERRAMIENTAS, IDIOMAS */}
+            <Section title="Habilidades" visible={visible.skills} onToggle={() => setVisible(v => ({ ...v, skills: !v.skills }))} onAdd={addSkill} addLabel="+">
+              {cv.skills.map((s) => (
+                <div key={s.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                  <input className="cvb-input" value={s.name} onChange={(e) => updateSkillName(s.id, e.target.value)} placeholder="Ej. Liderazgo de equipos" />
+                  <button className="cvb-btn" onClick={() => removeSkill(s.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
+                </div>
+              ))}
+            </Section>
+
+            <Section title="Herramientas / Software" visible={visible.tools} onToggle={() => setVisible(v => ({ ...v, tools: !v.tools }))} onAdd={addTool} addLabel="+">
+              {cv.tools.map((t) => (
+                <div key={t.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                  <input className="cvb-input" value={t.name} onChange={(e) => updateToolName(t.id, e.target.value)} placeholder="Ej. Excel, Power BI, SAP, Amadeus" />
+                  <button className="cvb-btn" onClick={() => removeTool(t.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
+                </div>
+              ))}
+            </Section>
+
+            <Section title="Idiomas" visible={visible.languages} onToggle={() => setVisible(v => ({ ...v, languages: !v.languages }))} onAdd={addLanguage} addLabel="+">
+              {cv.languages.map((l) => (
+                <div key={l.id} style={{ marginBottom: 12 }}>
+                  <Row2>
+                    <Field label="Idioma" value={l.name} onChange={(v) => updateLanguage(l.id, "name", v)} placeholder="Ej. Inglés" />
+                    <Field label="Nivel" value={l.level} onChange={(v) => updateLanguage(l.id, "level", v)} placeholder="Ej. Avanzado C1" />
+                  </Row2>
+                </div>
+              ))}
+            </Section>
             
             {/* INSCRIPCIÓN FINAL */}
             <div style={{ textAlign: "center", padding: "24px 0 12px", color: "#777", fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -472,7 +511,7 @@ function Section({ title, children, onAdd, addLabel, visible = true, onToggle })
 }
 function Field({ label, value, onChange, placeholder }) { return (<div style={{ marginBottom: 10, width: "100%" }}><label className="cvb-label">{label}</label><input className="cvb-input" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} /></div>); }
 function Row2({ children }) { return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%" }}>{children}</div>; }
-function skillNames(skills) { return (skills || []).filter((s) => s && s.name).map((s) => s.name); }
+function skillNames(items) { return (items || []).filter((s) => s && s.name && s.name.trim()).map((s) => s.name.trim()); }
 
 /* ---------- ENRUTADOR DE PLANTILLAS ---------- */
 function CVPreview({ data, templateId, palette, font, visible }) {
@@ -486,11 +525,14 @@ function CVPreview({ data, templateId, palette, font, visible }) {
    1. NÓRDICO MINIMALISTA
 ----------------------------------------------------------------- */
 function TplNordico({ data, palette, font, visible }) {
+  const toolsList = skillNames(data.tools);
+  const skillsList = skillNames(data.skills);
+
   return (
-    <div style={{ fontFamily: font, background: "#fff", color: palette.textDark, padding: "56px 64px", height: "100%", boxSizing: "border-box" }}>
+    <div style={{ fontFamily: font, background: "#fff", color: palette.textDark, padding: "56px 64px", boxSizing: "border-box" }}>
       
       {/* HEADER LIMPIO */}
-      <div style={{ borderBottom: `1px solid ${palette.accent}`, paddingBottom: 24, marginBottom: 32 }}>
+      <div className="page-block" style={{ borderBottom: `1px solid ${palette.accent}`, paddingBottom: 24, marginBottom: 32 }}>
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           {visible.photo && data.personal.photo && (
             <img src={data.personal.photo} alt="Perfil" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover" }} />
@@ -509,7 +551,7 @@ function TplNordico({ data, palette, font, visible }) {
       </div>
 
       {visible.summary && data.summary && (
-        <div style={{ marginBottom: 36 }}>
+        <div className="page-block" style={{ marginBottom: 36 }}>
           <p style={{ fontSize: 13.5, lineHeight: 1.7, margin: 0, fontWeight: 400, color: "#444" }}>{data.summary}</p>
         </div>
       )}
@@ -517,11 +559,11 @@ function TplNordico({ data, palette, font, visible }) {
       {/* EXPERIENCIA A LO ANCHO */}
       {visible.experience && (
         <div style={{ marginBottom: 40 }}>
-          <h2 style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 20, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>
+          <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 20, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>
             Experiencia Profesional
           </h2>
           {data.experience.map((e) => (
-            <div key={e.id} style={{ marginBottom: 24 }}>
+            <div key={e.id} className="page-block" style={{ marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
                 <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>{e.role} <span style={{ fontWeight: 400, color: palette.secondary }}>— {e.company}</span></h3>
                 <span style={{ fontSize: 12, color: "#888" }}>{e.start} – {e.end || "Actualidad"}</span>
@@ -534,14 +576,14 @@ function TplNordico({ data, palette, font, visible }) {
         </div>
       )}
 
-      {/* EDUCACION Y HABILIDADES A 2 COLUMNAS ABAJO */}
+      {/* EDUCACION Y HABILIDADES/HERRAMIENTAS A 2 COLUMNAS ABAJO */}
       <div style={{ display: "flex", gap: 48 }}>
         <div style={{ flex: 1 }}>
           {visible.education && (
             <div style={{ marginBottom: 32 }}>
-              <h2 style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 16, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Educación</h2>
+              <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 16, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Educación</h2>
               {data.education.map((ed) => (
-                <div key={ed.id} style={{ marginBottom: 12 }}>
+                <div key={ed.id} className="page-block" style={{ marginBottom: 12 }}>
                   <h3 style={{ fontSize: 13.5, fontWeight: 600, margin: "0 0 2px" }}>{ed.degree}</h3>
                   <p style={{ fontSize: 12.5, color: palette.secondary, margin: "0 0 2px" }}>{ed.institution}</p>
                   <p style={{ fontSize: 11.5, color: "#888", margin: 0 }}>{ed.start} - {ed.end}</p>
@@ -552,19 +594,31 @@ function TplNordico({ data, palette, font, visible }) {
         </div>
         
         <div style={{ flex: 1 }}>
-          {visible.skills && (
-            <div style={{ marginBottom: 24 }}>
-              <h2 style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 16, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Habilidades</h2>
+          {visible.skills && skillsList.length > 0 && (
+            <div className="page-block" style={{ marginBottom: 24 }}>
+              <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Habilidades</h2>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {skillNames(data.skills).map((s, i) => (
-                  <span key={i} style={{ background: palette.surface, color: palette.textDark, fontSize: 12, padding: "4px 10px", borderRadius: 4 }}>{s}</span>
+                {skillsList.map((s, i) => (
+                  <span key={i} style={{ background: palette.surface, color: palette.textDark, fontSize: 12, padding: "4px 10px", borderRadius: 4, border: `1px solid ${palette.accent}` }}>{s}</span>
                 ))}
               </div>
             </div>
           )}
+
+          {visible.tools && toolsList.length > 0 && (
+            <div className="page-block" style={{ marginBottom: 24 }}>
+              <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Herramientas & Software</h2>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {toolsList.map((t, i) => (
+                  <span key={i} style={{ background: "#FFF", color: palette.textDark, fontSize: 12, padding: "4px 10px", borderRadius: 4, border: `1px solid ${palette.secondary}50` }}>{t}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {visible.languages && (
-            <div>
-              <h2 style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 16, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Idiomas</h2>
+            <div className="page-block">
+              <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Idiomas</h2>
               {data.languages.filter(l=>l.name).map((l) => (
                 <div key={l.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4, color: "#555" }}>
                   <span style={{ fontWeight: 600 }}>{l.name}</span>
@@ -583,12 +637,15 @@ function TplNordico({ data, palette, font, visible }) {
    2. BLOQUE SUTIL
 ----------------------------------------------------------------- */
 function TplBloque({ data, palette, font, visible }) {
+  const toolsList = skillNames(data.tools);
+  const skillsList = skillNames(data.skills);
+
   return (
-    <div style={{ fontFamily: font, display: "flex", minHeight: "100%", height: 1123, background: "#fff" }}>
+    <div style={{ fontFamily: font, display: "flex", minHeight: "100%", background: "#fff" }}>
       
       {/* SIDEBAR */}
       <div style={{ width: "32%", background: palette.surface, padding: "48px 32px", color: palette.textDark, display: "flex", flexDirection: "column" }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
+        <div className="page-block" style={{ textAlign: "center", marginBottom: 32 }}>
           {visible.photo && data.personal.photo && (
              <img src={data.personal.photo} alt="Perfil" style={{ width: 110, height: 110, borderRadius: "50%", objectFit: "cover", marginBottom: 16 }} />
           )}
@@ -596,7 +653,7 @@ function TplBloque({ data, palette, font, visible }) {
           <p style={{ fontSize: 13, fontWeight: 600, color: palette.primary, margin: 0 }}>{data.personal.title}</p>
         </div>
 
-        <div style={{ marginBottom: 32 }}>
+        <div className="page-block" style={{ marginBottom: 32 }}>
           <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 12, letterSpacing: "1px" }}>Contacto</h3>
           {data.personal.location && <p style={{ fontSize: 12, margin: "0 0 8px" }}><IconPin color={palette.secondary} size={12} />{data.personal.location}</p>}
           {data.personal.phone && <p style={{ fontSize: 12, margin: "0 0 8px" }}><IconPhone color={palette.secondary} size={12} />{data.personal.phone}</p>}
@@ -606,9 +663,9 @@ function TplBloque({ data, palette, font, visible }) {
 
         {visible.education && (
           <div style={{ marginBottom: 32 }}>
-            <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 12, letterSpacing: "1px" }}>Educación</h3>
+            <h3 className="page-header-avoid" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 12, letterSpacing: "1px" }}>Educación</h3>
             {data.education.map((ed) => (
-              <div key={ed.id} style={{ marginBottom: 12 }}>
+              <div key={ed.id} className="page-block" style={{ marginBottom: 12 }}>
                 <p style={{ fontSize: 12.5, fontWeight: 600, margin: "0 0 2px" }}>{ed.degree}</p>
                 <p style={{ fontSize: 11.5, color: palette.secondary, margin: "0 0 2px" }}>{ed.institution}</p>
                 <p style={{ fontSize: 11, color: "#888", margin: 0 }}>{ed.start} - {ed.end}</p>
@@ -618,8 +675,8 @@ function TplBloque({ data, palette, font, visible }) {
         )}
 
         {visible.languages && (
-          <div>
-            <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 12, letterSpacing: "1px" }}>Idiomas</h3>
+          <div className="page-block">
+            <h3 className="page-header-avoid" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 12, letterSpacing: "1px" }}>Idiomas</h3>
             {data.languages.filter(l=>l.name).map((l) => (
               <div key={l.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
                 <span style={{ fontWeight: 600 }}>{l.name}</span>
@@ -633,7 +690,7 @@ function TplBloque({ data, palette, font, visible }) {
       {/* MAIN CONTENT */}
       <div style={{ width: "68%", padding: "48px 40px", color: palette.textDark }}>
         {visible.summary && data.summary && (
-          <div style={{ marginBottom: 36 }}>
+          <div className="page-block" style={{ marginBottom: 36 }}>
             <h2 style={{ fontSize: 14, fontWeight: 800, color: palette.primary, textTransform: "uppercase", marginBottom: 12, letterSpacing: "1px" }}>Perfil Profesional</h2>
             <p style={{ fontSize: 13.5, lineHeight: 1.65, color: "#444", margin: 0 }}>{data.summary}</p>
           </div>
@@ -641,9 +698,9 @@ function TplBloque({ data, palette, font, visible }) {
 
         {visible.experience && (
           <div style={{ marginBottom: 36 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 800, color: palette.primary, textTransform: "uppercase", marginBottom: 20, letterSpacing: "1px" }}>Experiencia</h2>
+            <h2 className="page-header-avoid" style={{ fontSize: 14, fontWeight: 800, color: palette.primary, textTransform: "uppercase", marginBottom: 20, letterSpacing: "1px" }}>Experiencia</h2>
             {data.experience.map((e) => (
-              <div key={e.id} style={{ marginBottom: 20 }}>
+              <div key={e.id} className="page-block" style={{ marginBottom: 20 }}>
                 <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 2px" }}>{e.role}</h3>
                 <div style={{ fontSize: 13, color: palette.secondary, fontWeight: 600, marginBottom: 6 }}>{e.company} <span style={{ color: "#888", fontWeight: 400, marginLeft: 6 }}>| {e.start} – {e.end || "Actualidad"}</span></div>
                 <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13, lineHeight: 1.6, color: "#555" }}>
@@ -654,12 +711,23 @@ function TplBloque({ data, palette, font, visible }) {
           </div>
         )}
 
-        {visible.skills && (
-          <div>
-            <h2 style={{ fontSize: 14, fontWeight: 800, color: palette.primary, textTransform: "uppercase", marginBottom: 16, letterSpacing: "1px" }}>Habilidades</h2>
+        {visible.skills && skillsList.length > 0 && (
+          <div className="page-block" style={{ marginBottom: 28 }}>
+            <h2 className="page-header-avoid" style={{ fontSize: 14, fontWeight: 800, color: palette.primary, textTransform: "uppercase", marginBottom: 14, letterSpacing: "1px" }}>Habilidades</h2>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {skillNames(data.skills).map((s, i) => (
+              {skillsList.map((s, i) => (
                 <span key={i} style={{ border: `1px solid ${palette.accent}`, color: palette.textDark, fontSize: 12, fontWeight: 500, padding: "4px 10px", borderRadius: 4 }}>{s}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {visible.tools && toolsList.length > 0 && (
+          <div className="page-block">
+            <h2 className="page-header-avoid" style={{ fontSize: 14, fontWeight: 800, color: palette.primary, textTransform: "uppercase", marginBottom: 14, letterSpacing: "1px" }}>Herramientas & Software</h2>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {toolsList.map((t, i) => (
+                <span key={i} style={{ background: palette.surface, border: `1px solid ${palette.accent}`, color: palette.textDark, fontSize: 12, fontWeight: 500, padding: "4px 10px", borderRadius: 4 }}>{t}</span>
               ))}
             </div>
           </div>
@@ -673,44 +741,50 @@ function TplBloque({ data, palette, font, visible }) {
    3. ATS (Blanco y Negro Tradicional)
 ----------------------------------------------------------------- */
 function TplATS({ data, visible }) {
+  const toolsList = skillNames(data.tools);
+  const skillsList = skillNames(data.skills);
+
   return (
-    <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#000", padding: "40px", fontSize: 13.5, lineHeight: 1.6, background: "#fff", height: "100%" }}>
-      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", textAlign: "center", textTransform: "uppercase" }}>{data.personal.name || "NOMBRE APELLIDO"}</h1>
-      <p style={{ margin: "0 0 8px", textAlign: "center", fontSize: 14 }}>{data.personal.title}</p>
-      <p style={{ margin: "0 0 20px", fontSize: 12, textAlign: "center" }}>{[data.personal.location, data.personal.email, data.personal.phone, data.personal.linkedin].filter(Boolean).join(" | ")}</p>
+    <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#000", padding: "40px", fontSize: 13.5, lineHeight: 1.6, background: "#fff" }}>
+      <div className="page-block">
+        <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", textAlign: "center", textTransform: "uppercase" }}>{data.personal.name || "NOMBRE APELLIDO"}</h1>
+        <p style={{ margin: "0 0 8px", textAlign: "center", fontSize: 14 }}>{data.personal.title}</p>
+        <p style={{ margin: "0 0 20px", fontSize: 12, textAlign: "center" }}>{[data.personal.location, data.personal.email, data.personal.phone, data.personal.linkedin].filter(Boolean).join(" | ")}</p>
+      </div>
       
       {visible.summary && data.summary && (
-        <>
+        <div className="page-block">
           <h2 style={{ fontSize: 13, fontWeight: 700, borderBottom: "1px solid #000", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>Resumen Profesional</h2>
           <p style={{ marginBottom: 16 }}>{data.summary}</p>
-        </>
+        </div>
       )}
       
       {visible.experience && (
-        <>
-          <h2 style={{ fontSize: 13, fontWeight: 700, borderBottom: "1px solid #000", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>Experiencia Laboral</h2>
+        <div style={{ marginBottom: 16 }}>
+          <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, borderBottom: "1px solid #000", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>Experiencia Laboral</h2>
           {data.experience.map((e) => (
-            <div key={e.id} style={{ marginBottom: 12 }}>
+            <div key={e.id} className="page-block" style={{ marginBottom: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, marginBottom: 2 }}><span>{e.role}, {e.company}</span><span>{e.start} - {e.end || "Actualidad"}</span></div>
               <ul style={{ margin: 0, paddingLeft: 18 }}>{e.bullets.filter(Boolean).map((b, i) => <li key={i} style={{ marginBottom: 3 }}>{b}</li>)}</ul>
             </div>
           ))}
-        </>
+        </div>
       )}
       
       {visible.education && (
-        <>
-          <h2 style={{ fontSize: 13, fontWeight: 700, borderBottom: "1px solid #000", paddingBottom: 4, marginBottom: 8, marginTop: 16, textTransform: "uppercase" }}>Educación</h2>
-          {data.education.map((ed) => (<p key={ed.id} style={{ margin: "0 0 4px", fontWeight: 700 }}>{ed.degree}, {ed.institution} <span style={{ fontWeight: 400 }}>({ed.start} - {ed.end})</span></p>))}
-        </>
+        <div style={{ marginBottom: 16 }}>
+          <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, borderBottom: "1px solid #000", paddingBottom: 4, marginBottom: 8, marginTop: 16, textTransform: "uppercase" }}>Educación</h2>
+          {data.education.map((ed) => (<p key={ed.id} className="page-block" style={{ margin: "0 0 4px", fontWeight: 700 }}>{ed.degree}, {ed.institution} <span style={{ fontWeight: 400 }}>({ed.start} - {ed.end})</span></p>))}
+        </div>
       )}
       
-      {visible.skills && (
-        <>
-          <h2 style={{ fontSize: 13, fontWeight: 700, borderBottom: "1px solid #000", paddingBottom: 4, marginBottom: 8, marginTop: 16, textTransform: "uppercase" }}>Habilidades e Idiomas</h2>
-          <p>{skillNames(data.skills).join(", ")}</p>
-          {visible.languages && <p>{data.languages.filter(l=>l.name).map(l => `${l.name} (${l.level})`).join(", ")}</p>}
-        </>
+      {(visible.skills || visible.tools || visible.languages) && (
+        <div className="page-block" style={{ marginTop: 16 }}>
+          <h2 style={{ fontSize: 13, fontWeight: 700, borderBottom: "1px solid #000", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>Habilidades, Herramientas e Idiomas</h2>
+          {visible.skills && skillsList.length > 0 && <p style={{ margin: "0 0 4px" }}><strong>Habilidades:</strong> {skillsList.join(", ")}</p>}
+          {visible.tools && toolsList.length > 0 && <p style={{ margin: "0 0 4px" }}><strong>Herramientas / Software:</strong> {toolsList.join(", ")}</p>}
+          {visible.languages && <p style={{ margin: 0 }}><strong>Idiomas:</strong> {data.languages.filter(l=>l.name).map(l => `${l.name} (${l.level})`).join(", ")}</p>}
+        </div>
       )}
     </div>
   );
