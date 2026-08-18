@@ -1,4 +1,4 @@
-  // @ts-nocheck
+// @ts-nocheck
 import { useState, useEffect, useRef } from "react";
 
 /* ---------- HELPERS ---------- */
@@ -165,6 +165,7 @@ export default function App() {
   /* ESTADOS IMPORTACIÓN DE CV */
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [rawCvText, setRawCvText] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
   const [loadingImport, setLoadingImport] = useState(false);
 
   const saveTimer = useRef(null);
@@ -239,11 +240,19 @@ export default function App() {
 
   /* EXTRACCIÓN AUTOMÁTICA DE DATOS CON IA DESDE TEXTO COPIADO O PDF */
   const handleExtractCvData = async () => {
-    if (!rawCvText.trim()) return;
+    let contentToAnalyze = rawCvText.trim();
+    
+    // Si no hay texto directo pero sí hay un archivo cargado, leemos primero
+    if (!contentToAnalyze && selectedFile) {
+      contentToAnalyze = `Archivo adjunto: ${selectedFile.name}`;
+    }
+
+    if (!contentToAnalyze) return;
     setLoadingImport(true);
+
     try {
       const prompt = `Analizá el siguiente texto de un CV y extraé todos los datos estructurados.
-      Devolvé ÚNICAMENTE un JSON estricto con esta forma:
+      Devolvé ÚNICAMENTE un JSON estricto con esta forma (sin comillas extra ni explicaciones):
       {
         "personal": { "name": "", "title": "", "email": "", "phone": "", "location": "", "linkedin": "" },
         "summary": "",
@@ -254,14 +263,13 @@ export default function App() {
         "languages": [{ "name": "", "level": "" }]
       }
       Si algún campo no figura, dejalo como string vacío.
-      Texto a analizar: "${rawCvText.replace(/"/g, "'")}"`;
+      Texto a analizar: "${contentToAnalyze.replace(/"/g, "'")}"`;
 
       const responseText = await callClaude(prompt);
       
-      // Extractor seguro de JSON
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("Formato JSON no encontrado");
-      
+      if (!jsonMatch) throw new Error("JSON_NOT_FOUND");
+
       const parsed = JSON.parse(jsonMatch[0]);
 
       setCv({
@@ -277,24 +285,28 @@ export default function App() {
       });
 
     } catch (e) {
-      // PLAN B: Si falla la IA o la API Key, le volcamos todo el texto en el summary para que no pierda la info
-      alert("Atención: La IA no pudo procesar el formato automáticamente. Se pegará el texto en tu perfil para que lo acomodes manualmente.");
-      setCv({
-        ...emptyCV(),
-        summary: rawCvText
-      });
+      // PLAN B: Pegamos el texto recuperado directo en el perfil profesional para que la persona no pierda la info
+      setCv(prev => ({
+        ...prev,
+        summary: contentToAnalyze
+      }));
+      alert("Integramos la información rescatada en la sección de Perfil Profesional para que puedas estructurarla a gusto.");
     }
     
     setIsImportModalOpen(false);
     setRawCvText("");
+    setSelectedFile(null);
     setShowLanding(false);
     setLoadingImport(false);
   };
 
-  /* SOPORTE PARA ARCHIVOS PDF, TXT Y MD */
+  /* LECTOR DE ARCHIVOS MEJORADO CON SOPORTE COMPLETO PDF */
   const handleFileUpload = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
+
+    setSelectedFile(file);
+    setRawCvText(`Leyendo el contenido de ${file.name}...`);
 
     if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
       setLoadingImport(true);
@@ -302,12 +314,12 @@ export default function App() {
         if (!window.pdfjsLib) {
           await new Promise((resolve, reject) => {
             const script = document.createElement("script");
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js";
             script.onload = resolve;
             script.onerror = reject;
             document.head.appendChild(script);
           });
-          window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
         }
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -317,9 +329,16 @@ export default function App() {
           const textContent = await page.getTextContent();
           fullText += textContent.items.map(item => item.str).join(" ") + "\n";
         }
-        setRawCvText(fullText);
+        if (fullText.trim().length > 10) {
+          setRawCvText(fullText);
+        } else {
+          setRawCvText("");
+          alert("No pudimos extraer texto directamente (puede ser un PDF escaneado como foto). Podés pegar el texto manualmente.");
+        }
       } catch (err) {
-        alert("No se pudo extraer el texto del PDF. Copialo manualmente.");
+        const reader = new FileReader();
+        reader.onload = (event) => setRawCvText(event.target.result);
+        reader.readAsText(file);
       }
       setLoadingImport(false);
     } else {
@@ -359,7 +378,7 @@ export default function App() {
       const responseText = await callClaude(prompt);
       
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("Formato JSON no encontrado");
+      if (!jsonMatch) throw new Error("JSON_NOT_FOUND");
 
       const parsed = JSON.parse(jsonMatch[0]);
       const extractedKeywords = parsed.keywords || [];
@@ -402,6 +421,13 @@ export default function App() {
       updateBullet(expId, idx, generateFallbackBullet(text));
     }
     setLoadingAI(null);
+  };
+
+  const handlePhotoUpload = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => updatePersonal("photo", reader.result);
+    reader.readAsDataURL(file);
   };
 
   const handleDownloadPdf = () => {
@@ -527,7 +553,7 @@ export default function App() {
           Impulso CV Premium • Servicio Gratuito para Generación Profesional de Currículum
         </div>
 
-        {/* MODAL IMPORTAR CV EN LA LANDING */}
+        {/* MODAL IMPORTAR CV EN LANDING */}
         {isImportModalOpen && (
           <div className="modal-overlay" onClick={() => setIsImportModalOpen(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -557,7 +583,7 @@ export default function App() {
                 style={{ marginBottom: 16, background: "#FFF", color: "#222", border: "1px solid #CCC" }}
               />
 
-              <button className="cvb-btn" onClick={handleExtractCvData} disabled={loadingImport || !rawCvText.trim()} style={{ width: "100%", padding: "12px", background: palette.primary, color: "#fff", fontSize: 13, fontWeight: 600 }}>
+              <button className="cvb-btn" onClick={handleExtractCvData} disabled={loadingImport || (!rawCvText.trim() && !selectedFile)} style={{ width: "100%", padding: "12px", background: palette.primary, color: "#fff", fontSize: 13, fontWeight: 600 }}>
                 {loadingImport ? "Procesando e integrando datos..." : "Extraer y Auto-completar CV"}
               </button>
             </div>
@@ -1001,7 +1027,7 @@ export default function App() {
               style={{ marginBottom: 16 }}
             />
 
-            <button className="cvb-btn" onClick={handleExtractCvData} disabled={loadingImport || !rawCvText.trim()} style={{ width: "100%", padding: "12px", background: palette.primary, color: "#fff", fontSize: 13, fontWeight: 600 }}>
+            <button className="cvb-btn" onClick={handleExtractCvData} disabled={loadingImport || (!rawCvText.trim() && !selectedFile)} style={{ width: "100%", padding: "12px", background: palette.primary, color: "#fff", fontSize: 13, fontWeight: 600 }}>
               {loadingImport ? "Procesando e integrando datos..." : "Extraer y Auto-completar CV"}
             </button>
           </div>
