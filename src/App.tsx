@@ -335,13 +335,13 @@ export default function App() {
             Impulso CV <span style={{ color: palette.primary, background: "#FFF", padding: "2px 8px", borderRadius: 10, fontSize: 10, verticalAlign: "middle", marginLeft: 6, fontWeight: 600 }}>PREMIUM</span>
           </h1>
           <button onClick={() => setShowLanding(false)} style={{ background: palette.primary, color: "#fff", border: "none", padding: "8px 18px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            Crear mi CV (Gratis)
+            Crear mi CV
           </button>
         </div>
 
         <div style={{ maxWidth: 900, margin: "0 auto", padding: "60px 24px 40px", textAlign: "center" }}>
           <span style={{ background: "#E8E2D5", color: "#555", padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-            ✨ HERRAMIENTA 100% GRATUITA
+            ✨ GENERADOR DE CURRÍCULUM
           </span>
           <h2 style={{ fontSize: "clamp(28px, 5vw, 44px)", fontWeight: 800, color: "#222", margin: "20px 0 16px", lineHeight: 1.25 }}>
             Destacá en tus postulaciones con un CV profesional y optimizado.
@@ -350,11 +350,11 @@ export default function App() {
             Impulso CV combina plantillas profesionales, cazador de palabras clave ATS, medidor de completitud en tiempo real y análisis con Inteligencia Artificial para potenciar tu perfil laboral.
           </p>
           <p style={{ fontSize: 13.5, color: "#888", margin: "0 auto 32px", fontWeight: 500 }}>
-            Un servicio 100% gratuito diseñado para impulsar tu carrera sin costos ni registros.
+            Un servicio gratuito diseñado para impulsar tu carrera.
           </p>
 
           <button className="landing-btn-main" onClick={() => setShowLanding(false)}>
-            Comenzar mi CV ahora (Gratis) →
+            Comenzar mi CV ahora →
           </button>
         </div>
 
