@@ -8,6 +8,8 @@ const emptyEducation = () => ({ id: uid(), institution: "", degree: "", start: "
 const emptyLanguage = () => ({ id: uid(), name: "", level: "" });
 const emptySkill = () => ({ id: uid(), name: "", level: 4 });
 const emptyTool = () => ({ id: uid(), name: "" });
+const emptyCustomSection = () => ({ id: uid(), title: "Certificaciones / Proyectos", items: [""] });
+
 const emptyCV = () => ({
   personal: { name: "", title: "", email: "", phone: "", location: "", linkedin: "", photo: "" },
   summary: "",
@@ -16,6 +18,7 @@ const emptyCV = () => ({
   skills: [emptySkill()],
   languages: [emptyLanguage()],
   tools: [emptyTool()],
+  customSections: [],
 });
 
 function normalizeSkills(skills) {
@@ -161,7 +164,7 @@ export default function App() {
       const res = localStorage.getItem(STORAGE_KEY);
       if (res) {
         const parsed = JSON.parse(res);
-        if (parsed.cv) setCv({ ...emptyCV(), ...parsed.cv, personal: { ...emptyCV().personal, ...parsed.cv.personal }, skills: normalizeSkills(parsed.cv.skills), tools: normalizeTools(parsed.cv.tools) });
+        if (parsed.cv) setCv({ ...emptyCV(), ...parsed.cv, personal: { ...emptyCV().personal, ...parsed.cv.personal }, skills: normalizeSkills(parsed.cv.skills), tools: normalizeTools(parsed.cv.tools), customSections: parsed.cv.customSections || [] });
         if (parsed.templateId) setTemplateId(parsed.templateId);
         if (parsed.palette) setPalette(parsed.palette);
         if (parsed.selectedFont) setSelectedFont(parsed.selectedFont);
@@ -210,6 +213,14 @@ export default function App() {
 
   const updateLanguage = (id, field, value) => setCv((c) => ({ ...c, languages: c.languages.map((l) => (l.id === id ? { ...l, [field]: value } : l)) }));
   const addLanguage = () => setCv((c) => ({ ...c, languages: [...c.languages, emptyLanguage()] }));
+
+  /* SECCIONES PERSONALIZADAS */
+  const addCustomSection = () => setCv(c => ({ ...c, customSections: [...(c.customSections || []), emptyCustomSection()] }));
+  const removeCustomSection = (id) => setCv(c => ({ ...c, customSections: (c.customSections || []).filter(s => s.id !== id) }));
+  const updateCustomSectionTitle = (id, title) => setCv(c => ({ ...c, customSections: (c.customSections || []).map(s => s.id === id ? { ...s, title } : s) }));
+  const addCustomItem = (secId) => setCv(c => ({ ...c, customSections: (c.customSections || []).map(s => s.id === secId ? { ...s, items: [...s.items, ""] } : s) }));
+  const updateCustomItem = (secId, idx, val) => setCv(c => ({ ...c, customSections: (c.customSections || []).map(s => s.id === secId ? { ...s, items: s.items.map((item, i) => i === idx ? val : item) } : s) }));
+  const removeCustomItem = (secId, idx) => setCv(c => ({ ...c, customSections: (c.customSections || []).map(s => s.id === secId ? { ...s, items: s.items.filter((_, i) => i !== idx) } : s) }));
 
   const analyzeEntireCV = async () => {
     setIsAiModalOpen(true);
@@ -410,8 +421,34 @@ export default function App() {
         .cvb-input { width:100%; border:1px solid ${inputBorder}; border-radius:6px; padding:10px 12px; font-size:13.5px; font-family:'Inter',sans-serif; background: ${inputBg}; color: ${textColor}; font-weight:400; }
         .cvb-input:focus { outline:2px solid ${palette.primary}; outline-offset:1px; background: ${darkMode ? '#333' : '#fff'}; }
         .cvb-label { font-size:11px; font-weight:600; color:${darkMode ? '#A0A0A0' : '#6B726B'}; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:6px; }
+        
+        .print-area-wrapper { position: relative; }
         .print-area { width: 794px; min-height: 1123px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin: 0 auto; }
         
+        /* LÍNEA GUÍA DE CORTE DE HOJA A4 */
+        .page-break-indicator {
+          position: absolute;
+          top: 1123px;
+          left: -10px;
+          right: -10px;
+          border-top: 2px dashed #E53935;
+          pointer-events: none;
+          z-index: 10;
+        }
+        .page-break-indicator::after {
+          content: "── FIN PÁGINA 1 (A4) ──";
+          position: absolute;
+          right: 20px;
+          top: -9px;
+          background: #E53935;
+          color: white;
+          font-size: 9px;
+          font-weight: 800;
+          padding: 2px 8px;
+          border-radius: 4px;
+          letter-spacing: 0.5px;
+        }
+
         .page-block { break-inside: avoid !important; page-break-inside: avoid !important; padding-top: 14px; margin-top: 6px; }
         .page-header-avoid { break-after: avoid !important; page-break-after: avoid !important; }
 
@@ -427,7 +464,17 @@ export default function App() {
         .ai-text h3 { color: ${palette.primary}; font-size: 15px; margin: 16px 0 8px; border-bottom: 1px solid ${palette.accent}; padding-bottom: 4px; font-weight:600; }
         .ai-text p { font-size: 14px; line-height: 1.6; color: ${textColor}; margin: 0 0 12px; }
 
-        /* RESPONSIVE CELULAR */
+        /* RESPONSIVE & VISTA PREVIA FIJA EN WEB */
+        @media (min-width: 769px) {
+          .mobile-tabs { display: none !important; }
+          .panel-right-mobile {
+            position: sticky !important;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto !important;
+          }
+        }
+
         @media (max-width: 768px) {
           .cvb-header-nav { flex-direction: column; align-items: flex-start !important; gap: 12px; padding: 14px 16px !important; }
           .cvb-header-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
@@ -439,9 +486,6 @@ export default function App() {
           .panel-left-mobile { display: ${activeTabMobile === 'editor' ? 'block' : 'none'} !important; width: 100% !important; max-width: 100% !important; }
           .panel-right-mobile { display: ${activeTabMobile === 'preview' ? 'flex' : 'none'} !important; width: 100% !important; overflow-x: auto !important; }
           .print-area-container { transform: scale(0.44); transform-origin: top center; margin-bottom: -600px; }
-        }
-        @media (min-width: 769px) {
-          .mobile-tabs { display: none !important; }
         }
       `}</style>
 
@@ -712,6 +756,27 @@ export default function App() {
                 </div>
               ))}
             </Section>
+
+            {/* SECCIONES PERSONALIZADAS */}
+            <Section title="Secciones Personalizadas" hint="Agregá bloques libres con título a elección (Certificaciones, Voluntariados, Proyectos)." onAdd={addCustomSection} addLabel="+ Nueva Sección" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+              {(cv.customSections || []).map((sec) => (
+                <div key={sec.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 12, alignItems: "center" }}>
+                    <input className="cvb-input" style={{ fontWeight: 700, color: palette.primary }} value={sec.title} onChange={(e) => updateCustomSectionTitle(sec.id, e.target.value)} placeholder="Título de la Sección" />
+                    <button className="cvb-btn" onClick={() => removeCustomSection(sec.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 12px", height: 38 }}>✕</button>
+                  </div>
+
+                  <label className="cvb-label">Elementos / Ítems</label>
+                  {sec.items.map((item, idx) => (
+                    <div key={idx} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                      <input className="cvb-input" value={item} onChange={(e) => updateCustomItem(sec.id, idx, e.target.value)} placeholder="Ej. Certificación Scrum Master (2024)..." />
+                      <button className="cvb-btn" onClick={() => removeCustomItem(sec.id, idx)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
+                    </div>
+                  ))}
+                  <button className="cvb-btn" onClick={() => addCustomItem(sec.id)} style={{ background: "transparent", color: palette.primary, fontSize: 12, padding: "4px 0" }}>+ Agregar ítem</button>
+                </div>
+              ))}
+            </Section>
             
             <div style={{ textAlign: "center", padding: "24px 0 12px", color: darkMode ? "#999" : "#777", fontSize: 12.5, fontWeight: 400, display: "flex", alignItems: "center", justifyContent: "center" }}>
               Espero te sirva. Muchos éxitos. <IconHeart color={palette.secondary} />
@@ -723,8 +788,11 @@ export default function App() {
         {/* PANEL DERECHO */}
         <div className="panel-right-mobile" style={{ flex: "2 1 520px", minWidth: 320, overflowX: "auto", display: "flex", justifyContent: "center", paddingBottom: 60 }}>
           <div className="print-area-container">
-            <div ref={printRef} className="print-area">
-              <CVPreview data={cv} templateId={templateId} palette={palette} font={currentFontFamily} visible={visible} />
+            <div className="print-area-wrapper">
+              <div className="page-break-indicator" data-html2canvas-ignore="true" />
+              <div ref={printRef} className="print-area">
+                <CVPreview data={cv} templateId={templateId} palette={palette} font={currentFontFamily} visible={visible} />
+              </div>
             </div>
           </div>
         </div>
@@ -800,6 +868,7 @@ function TplNordico({ data, palette, font, visible }) {
   const toolsList = skillNames(data.tools);
   const skillsList = skillNames(data.skills);
   const showTools = (visible.tools ?? true) && toolsList.length > 0;
+  const customSecs = (data.customSections || []).filter(s => s.title && s.items.some(Boolean));
 
   return (
     <div style={{ fontFamily: font, background: "#fff", color: palette.textDark, padding: "56px 64px 40px", boxSizing: "border-box" }}>
@@ -860,6 +929,15 @@ function TplNordico({ data, palette, font, visible }) {
               ))}
             </div>
           )}
+
+          {customSecs.map((cs) => (
+            <div key={cs.id} className="page-block" style={{ marginBottom: 28 }}>
+              <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>{cs.title}</h2>
+              <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, lineHeight: 1.6, color: "#555" }}>
+                {cs.items.filter(Boolean).map((item, idx) => <li key={idx} style={{ marginBottom: 4 }}>{item}</li>)}
+              </ul>
+            </div>
+          ))}
         </div>
         
         <div style={{ flex: 1 }}>
@@ -907,6 +985,7 @@ function TplBloque({ data, palette, font, visible }) {
   const toolsList = skillNames(data.tools);
   const skillsList = skillNames(data.skills);
   const showTools = (visible.tools ?? true) && toolsList.length > 0;
+  const customSecs = (data.customSections || []).filter(s => s.title && s.items.some(Boolean));
 
   return (
     <div style={{ fontFamily: font, display: "flex", minHeight: "100%", background: "#fff" }}>
@@ -988,7 +1067,7 @@ function TplBloque({ data, palette, font, visible }) {
         )}
 
         {showTools && (
-          <div className="page-block">
+          <div className="page-block" style={{ marginBottom: 28 }}>
             <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 14, letterSpacing: "1px" }}>Herramientas & Software</h2>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {toolsList.map((t, i) => (
@@ -997,6 +1076,15 @@ function TplBloque({ data, palette, font, visible }) {
             </div>
           </div>
         )}
+
+        {customSecs.map((cs) => (
+          <div key={cs.id} className="page-block" style={{ marginBottom: 28 }}>
+            <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 14, letterSpacing: "1px" }}>{cs.title}</h2>
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12.5, lineHeight: 1.6, color: "#555" }}>
+              {cs.items.filter(Boolean).map((item, idx) => <li key={idx} style={{ marginBottom: 4 }}>{item}</li>)}
+            </ul>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1007,6 +1095,7 @@ function TplATS({ data, visible }) {
   const toolsList = skillNames(data.tools);
   const skillsList = skillNames(data.skills);
   const showTools = (visible.tools ?? true) && toolsList.length > 0;
+  const customSecs = (data.customSections || []).filter(s => s.title && s.items.some(Boolean));
 
   return (
     <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#222", padding: "40px", fontSize: 13, lineHeight: 1.6, background: "#fff" }}>
@@ -1047,9 +1136,18 @@ function TplATS({ data, visible }) {
           <h2 style={{ fontSize: 12, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>Habilidades, Herramientas e Idiomas</h2>
           {visible.skills && skillsList.length > 0 && <p style={{ margin: "0 0 4px" }}><strong>Habilidades:</strong> {skillsList.join(", ")}</p>}
           {showTools && <p style={{ margin: "0 0 4px" }}><strong>Herramientas / Software:</strong> {toolsList.join(", ")}</p>}
-          {visible.languages && <p style={{ margin: 0 }}><strong>Idiomas:</strong> {data.languages.filter(l=>l.name).map(l => `${l.name} (${l.level})`).join(", ")}</p>}
+          {visible.languages && <p style={{ margin: "0 0 4px" }}><strong>Idiomas:</strong> {data.languages.filter(l=>l.name).map(l => `${l.name} (${l.level})`).join(", ")}</p>}
         </div>
       )}
+
+      {customSecs.map((cs) => (
+        <div key={cs.id} className="page-block" style={{ marginTop: 16 }}>
+          <h2 style={{ fontSize: 12, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>{cs.title}</h2>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {cs.items.filter(Boolean).map((item, idx) => <li key={idx} style={{ marginBottom: 3 }}>{item}</li>)}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }
