@@ -237,7 +237,7 @@ export default function App() {
   const updateCustomItem = (secId, idx, val) => setCv(c => ({ ...c, customSections: (c.customSections || []).map(s => s.id === secId ? { ...s, items: s.items.map((item, i) => i === idx ? val : item) } : s) }));
   const removeCustomItem = (secId, idx) => setCv(c => ({ ...c, customSections: (c.customSections || []).map(s => s.id === secId ? { ...s, items: s.items.filter((_, i) => i !== idx) } : s) }));
 
-  /* EXTRACCIÓN AUTOMÁTICA DE DATOS CON IA DESDE TEXTO COPIADO */
+  /* EXTRACCIÓN AUTOMÁTICA DE DATOS CON IA DESDE TEXTO COPIADO O PDF */
   const handleExtractCvData = async () => {
     if (!rawCvText.trim()) return;
     setLoadingImport(true);
@@ -281,12 +281,44 @@ export default function App() {
     setLoadingImport(false);
   };
 
-  const handleFileUpload = (e) => {
+  /* SOPORTE PARA ARCHIVOS PDF, TXT Y MD */
+  const handleFileUpload = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => setRawCvText(event.target.result);
-    reader.readAsText(file);
+
+    if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+      setLoadingImport(true);
+      try {
+        if (!window.pdfjsLib) {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        }
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = "";
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map(item => item.str).join(" ");
+          fullText += pageText + "\n";
+        }
+        setRawCvText(fullText);
+      } catch (err) {
+        alert("No se pudo extraer directamente el texto del PDF. Podés copiar y pegar el contenido en el recuadro.");
+      }
+      setLoadingImport(false);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => setRawCvText(event.target.result);
+      reader.readAsText(file);
+    }
   };
 
   const analyzeEntireCV = async () => {
@@ -457,7 +489,7 @@ export default function App() {
             <div style={{ fontSize: 28, marginBottom: 12 }}>📥</div>
             <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Importador por IA</h3>
             <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
-              Pegá el texto de tu CV actual y la IA extraerá tus datos automáticamente para que no tengas que escribir de nuevo.
+              Cargá un archivo PDF/texto o pegá el contenido de tu CV actual y la IA extraerá tus datos automáticamente.
             </p>
           </div>
 
@@ -909,12 +941,12 @@ export default function App() {
             </div>
 
             <p style={{ fontSize: 12.5, color: darkMode ? "#AAA" : "#666", marginBottom: 14 }}>
-              Pegá el texto completo de tu CV actual o cargá un archivo `.txt`. La IA extraerá automáticamente tu información para completar los campos.
+              Cargá un archivo <b>.pdf</b>, <b>.txt</b> o <b>.md</b> o pegá el texto completo de tu CV actual. La IA extraerá automáticamente tu información para completar los campos.
             </p>
 
             <div style={{ marginBottom: 12 }}>
-              <label className="cvb-label">Subir Archivo de Texto (.txt / .md)</label>
-              <input type="file" accept=".txt,.md" onChange={handleFileUpload} style={{ fontSize: 12, color: textColor }} />
+              <label className="cvb-label">Subir Archivo (.PDF / .TXT / .MD)</label>
+              <input type="file" accept=".pdf,.txt,.md" onChange={handleFileUpload} style={{ fontSize: 12, color: textColor }} />
             </div>
 
             <label className="cvb-label">o Pegá el Texto de tu CV:</label>
