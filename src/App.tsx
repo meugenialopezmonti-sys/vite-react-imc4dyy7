@@ -43,6 +43,7 @@ const IconArrowDown = ({ color = "currentColor", size = 12 }) => (<svg width={si
 const IconPalette = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 6 }}><circle cx="13.5" cy="6.5" r=".5" fill={color}/><circle cx="17.5" cy="10.5" r=".5" fill={color}/><circle cx="8.5" cy="7.5" r=".5" fill={color}/><circle cx="6.5" cy="12.5" r=".5" fill={color}/><path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10c1.38 0 2.5-1.12 2.5-2.5 0-.61-.23-1.21-.64-1.67-.38-.43-.6-.98-.6-1.58 0-1.38 1.12-2.5 2.5-2.5H18c2.21 0 4-1.79 4-4 0-4.97-4.48-9-10-9z"/></svg>);
 const IconHeart = ({ color = "#C47165", size = 15 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginLeft: 6 }}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>);
 const IconTrash = ({ color = "#888", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 4 }}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>);
+const IconInfo = ({ color = "#888", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 4 }}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>);
 
 /* ---------- PALETAS NÓRDICAS ---------- */
 const PRESET_PALETTES = [
@@ -116,6 +117,7 @@ async function callClaude(prompt) {
 
 /* ---------- APP PRINCIPAL ---------- */
 export default function App() {
+  const [showLanding, setShowLanding] = useState(true);
   const [cv, setCv] = useState(emptyCV());
   const [templateId, setTemplateId] = useState("nordico");
   const [palette, setPalette] = useState(PRESET_PALETTES[0]); 
@@ -126,6 +128,7 @@ export default function App() {
   const [aiFeedback, setAiFeedback] = useState(""); 
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [activeTabMobile, setActiveTabMobile] = useState("editor"); // 'editor' | 'preview'
   
   const saveTimer = useRef(null);
   const printRef = useRef(null);
@@ -243,6 +246,88 @@ export default function App() {
 
   const currentFontFamily = FONTS.find(f => f.id === selectedFont)?.family || "'Nunito', sans-serif";
 
+  /* ---------- RENDER LANDING PAGE INTRO ---------- */
+  if (showLanding) {
+    return (
+      <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", background: "#F4F5F4", minHeight: "100vh", color: "#333", display: "flex", flexDirection: "column" }}>
+        <style>{`
+          * { box-sizing: border-box; }
+          .landing-btn-main { background: ${palette.primary}; color: #fff; padding: 16px 36px; border-radius: 30px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.12); }
+          .landing-btn-main:hover { opacity: 0.92; transform: translateY(-2px); }
+          .landing-card { background: #fff; border: 1px solid #E2E4E2; border-radius: 16px; padding: 24px; flex: 1; min-width: 260px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        `}</style>
+        
+        {/* Header Landing */}
+        <div style={{ padding: "20px 32px", background: "#E8E2D5", borderBottom: "1px solid #D8D0C0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "#2B2B2B" }}>
+            Impulso CV <span style={{ color: palette.primary, background: "#FFF", padding: "2px 8px", borderRadius: 10, fontSize: 10, verticalAlign: "middle", marginLeft: 6, fontWeight: 600 }}>PREMIUM</span>
+          </h1>
+          <button onClick={() => setShowLanding(false)} style={{ background: palette.primary, color: "#fff", border: "none", padding: "8px 18px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            Crear mi CV
+          </button>
+        </div>
+
+        {/* Hero Section */}
+        <div style={{ maxWidth: 900, margin: "0 auto", padding: "60px 24px 40px", textAlign: "center" }}>
+          <span style={{ background: "#E8E2D5", color: "#555", padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            ✨ Generador Inteligente de Currículum
+          </span>
+          <h2 style={{ fontSize: "clamp(28px, 5vw, 44px)", fontWeight: 800, color: "#222", margin: "20px 0 16px", lineHeight: 1.25 }}>
+            Destacá en tus postulaciones con un CV profesional y optimizado.
+          </h2>
+          <p style={{ fontSize: 16, color: "#666", lineHeight: 1.6, maxWidth: 680, margin: "0 auto 32px" }}>
+            Impulso CV combina diseño nórdico minimalista, compatibilidad ATS para filtros automáticos y análisis con Inteligencia Artificial para potenciar tus oportunidades laborales.
+          </p>
+
+          <button className="landing-btn-main" onClick={() => setShowLanding(false)}>
+            Comenzar mi CV ahora →
+          </button>
+        </div>
+
+        {/* Grid de Funcionalidades */}
+        <div style={{ maxWidth: 1000, margin: "0 auto 60px", padding: "0 24px", display: "flex", flexWrap: "wrap", gap: 20 }}>
+          <div className="landing-card">
+            <div style={{ fontSize: 28, marginBottom: 12 }}>🎨</div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Diseño & Color Libre</h3>
+            <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
+              Elegí entre paletas nórdicas armónicas o creá tu tono exacto con nuestro selector de color X/Y en tiempo real.
+            </p>
+          </div>
+
+          <div className="landing-card">
+            <div style={{ fontSize: 28, marginBottom: 12 }}>🤖</div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Evaluación Inteligente (IA)</h3>
+            <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
+              Recibí feedback en vivo de un reclutador virtual sobre tu redacción, verbos de impacto y estructura.
+            </p>
+          </div>
+
+          <div className="landing-card">
+            <div style={{ fontSize: 28, marginBottom: 12 }}>📄</div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Formato Apto Filtros ATS</h3>
+            <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
+              Estructura optimizada para superar los sistemas automatizados de selección de las empresas.
+            </p>
+          </div>
+
+          <div className="landing-card">
+            <div style={{ fontSize: 28, marginBottom: 12 }}>⚡</div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Exportación PDF Impecable</h3>
+            <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
+              Cortes de página automáticos para que tus títulos e información nunca queden cortados.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer Landing */}
+        <div style={{ marginTop: "auto", padding: "20px", textAlign: "center", borderTop: "1px solid #E2E4E2", fontSize: 13, color: "#777" }}>
+          Impulso CV Premium • Generador Profesional de Currículum
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------- BUILDER / EDITOR ---------- */
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", background: "#F4F5F4", minHeight: "100vh", position: "relative", color: "#4A4A4A" }}>
       <style>{`
@@ -269,49 +354,95 @@ export default function App() {
         .modal-content { background: #fff; padding: 32px; border-radius: 16px; width: 90%; maxWidth: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
         .ai-text h3 { color: ${palette.primary}; font-size: 15px; margin: 16px 0 8px; border-bottom: 1px solid ${palette.accent}; padding-bottom: 4px; font-weight:600; }
         .ai-text p { font-size: 14px; line-height: 1.6; color: #4A4A4A; margin: 0 0 12px; }
+
+        /* RESPONSIVE CELULAR */
+        @media (max-width: 768px) {
+          .cvb-header-nav { flex-direction: column; align-items: flex-start !important; gap: 12px; padding: 14px 16px !important; }
+          .cvb-header-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+          .cvb-header-actions button { flex: 1 1 auto; font-size: 11px !important; padding: 8px 10px !important; justify-content: center; }
+          .cvb-main-layout { padding: 12px !important; gap: 16px !important; }
+          .mobile-tabs { display: flex !important; width: 100%; background: #E2E4E2; border-radius: 8px; padding: 4px; margin-bottom: 12px; }
+          .mobile-tab-btn { flex: 1; padding: 8px; border: none; background: transparent; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; }
+          .mobile-tab-btn.active { background: #fff; color: ${palette.primary}; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+          .panel-left-mobile { display: ${activeTabMobile === 'editor' ? 'block' : 'none'} !important; width: 100% !important; max-width: 100% !important; }
+          .panel-right-mobile { display: ${activeTabMobile === 'preview' ? 'flex' : 'none'} !important; width: 100% !important; overflow-x: auto !important; }
+          .print-area-container { transform: scale(0.44); transform-origin: top center; margin-bottom: -600px; }
+        }
+        @media (min-width: 769px) {
+          .mobile-tabs { display: none !important; }
+        }
       `}</style>
 
       {/* HEADER DE LA APP */}
-      <div style={{ padding: "18px 32px", background: "#E8E2D5", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #D8D0C0" }}>
+      <div className="cvb-header-nav" style={{ padding: "18px 32px", background: "#E8E2D5", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #D8D0C0" }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "#2B2B2B", letterSpacing: "-0.5px", display: "flex", alignItems: "center" }}>
             Impulso CV <span style={{ color: palette.primary, background: "#FFF", padding: "2px 8px", borderRadius: 10, fontSize: 10, verticalAlign: "middle", marginLeft: 8, border: `1px solid ${palette.secondary}40`, fontWeight: 600 }}>PREMIUM</span>
           </h1>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button className="cvb-btn" onClick={handleResetCV} style={{ padding: "8px 14px", fontSize: 12, background: "transparent", border: "1px solid #CFC7B8", color: "#666" }} title="Limpiar todos los campos">
+        <div className="cvb-header-actions" style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button className="cvb-btn" onClick={() => setShowLanding(true)} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: "1px solid #CFC7B8", color: "#555" }}>
+            ℹ️ Ver Guía
+          </button>
+          <button className="cvb-btn" onClick={handleResetCV} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: "1px solid #CFC7B8", color: "#666" }} title="Limpiar todos los campos">
             <IconTrash color="#666" /> Empezar de cero
           </button>
-          <button className="cvb-btn" onClick={analyzeEntireCV} style={{ padding: "8px 16px", fontSize: 12.5, background: "#FFF", border: "1px solid #CFC7B8", color: "#333", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+          <button className="cvb-btn" onClick={analyzeEntireCV} style={{ padding: "8px 14px", fontSize: 12, background: "#FFF", border: "1px solid #CFC7B8", color: "#333", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
             <IconSparkles color={palette.primary} /> Revisar con IA
           </button>
-          <button className="cvb-btn" onClick={handleDownloadPdf} disabled={downloading} style={{ padding: "8px 20px", fontSize: 12.5, background: palette.primary, color: "#fff", opacity: downloading ? 0.6 : 1 }}>
+          <button className="cvb-btn" onClick={handleDownloadPdf} disabled={downloading} style={{ padding: "8px 18px", fontSize: 12, background: palette.primary, color: "#fff", opacity: downloading ? 0.6 : 1 }}>
             ⬇ Descargar PDF
           </button>
         </div>
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 24, padding: 32, alignItems: "flex-start" }}>
+      <div className="cvb-main-layout" style={{ display: "flex", flexWrap: "wrap", gap: 24, padding: 32, alignItems: "flex-start" }}>
         
+        {/* TABS SELECTOR PARA CELULARES */}
+        <div className="mobile-tabs">
+          <button className={`mobile-tab-btn ${activeTabMobile === 'editor' ? 'active' : ''}`} onClick={() => setActiveTabMobile('editor')}>
+            ✏️ Editar Datos
+          </button>
+          <button className={`mobile-tab-btn ${activeTabMobile === 'preview' ? 'active' : ''}`} onClick={() => setActiveTabMobile('preview')}>
+            👁️ Vista Previa
+          </button>
+        </div>
+
         {/* PANEL IZQUIERDO */}
-        <div style={{ flex: "1 1 400px", minWidth: 320, maxWidth: 480 }}>
+        <div className="panel-left-mobile" style={{ flex: "1 1 400px", minWidth: 320, maxWidth: 480 }}>
           
+          {/* ESTILO Y COLOR */}
           <div style={{ background: "#fff", border: "1px solid #EAECE8", borderRadius: 12, padding: 24, marginBottom: 20 }}>
-            <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 16px", color: "#2B2B2B", textTransform: "uppercase", letterSpacing: "0.5px" }}>1. ESTILO</h3>
+            <div style={{ marginBottom: 12 }}>
+              <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 4px", color: "#2B2B2B", textTransform: "uppercase", letterSpacing: "0.5px" }}>1. ESTILO</h3>
+              <p style={{ fontSize: 11.5, color: "#777", margin: 0 }}>Ajustá la paleta de color, tipografía y la distribución de la hoja.</p>
+            </div>
             
             <label className="cvb-label">Paletas Armónicas</label>
-            <div style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 10, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
               {PRESET_PALETTES.map(p => (
                 <div key={p.id} onClick={() => setPalette(p)} className="color-swatch" style={{ background: p.primary, border: palette.id === p.id ? `3px solid #2B2B2B` : "2px solid transparent" }} title={p.name} />
               ))}
             </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 14px", background: "#F9FAF8", border: "1px solid #EAECE8", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: 500, color: "#4A4A4A" }}>
-                <IconPalette color="#4A4A4A" />
-                <span>Elegí tu color personalizado</span>
-                <input type="color" value={palette.primary} onChange={(e) => setPalette(generateCustomPalette(e.target.value))} style={{ width: 18, height: 18, border: "none", background: "none", cursor: "pointer", padding: 0 }} />
-              </label>
+            {/* SELECTOR DE COLOR X/Y LIBRE */}
+            <div style={{ marginBottom: 20, background: "#F9FAF8", border: "1px solid #EAECE8", borderRadius: 10, padding: 12 }}>
+              <label className="cvb-label" style={{ marginBottom: 6 }}>Selector de Color Libre (Cualquier tono)</label>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <input 
+                  type="color" 
+                  value={palette.primary.length === 7 ? palette.primary : "#9C4235"} 
+                  onChange={(e) => setPalette(generateCustomPalette(e.target.value))} 
+                  style={{ width: 42, height: 36, border: "1px solid #CCC", borderRadius: 6, cursor: "pointer", padding: 2, background: "#fff" }} 
+                />
+                <input 
+                  className="cvb-input"
+                  style={{ flex: 1, textTransform: "uppercase", fontWeight: 600, fontSize: 12 }}
+                  value={palette.primary} 
+                  onChange={(e) => setPalette(generateCustomPalette(e.target.value))} 
+                  placeholder="#000000"
+                />
+              </div>
             </div>
 
             <label className="cvb-label">Tono de Fuente</label>
@@ -347,7 +478,7 @@ export default function App() {
 
           {/* FORMULARIO */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <Section title="2. Datos personales" visible={visible.photo} onToggle={() => setVisible(v => ({ ...v, photo: !v.photo }))}>
+            <Section title="2. Datos personales" hint="Información de contacto directa y foto profesional (opcional)." visible={visible.photo} onToggle={() => setVisible(v => ({ ...v, photo: !v.photo }))}>
               <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
                 {cv.personal.photo ? <img src={cv.personal.photo} alt="Perfil" style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover", border: `1px solid ${palette.secondary}` }} /> : <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#F4F5F4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#AAA", fontWeight: 500 }}>FOTO</div>}
                 <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e.target.files && e.target.files[0])} style={{ fontSize: 12, color: "#666" }} />
@@ -358,11 +489,11 @@ export default function App() {
               <Row2><Field label="Ubicación" value={cv.personal.location} onChange={(v) => updatePersonal("location", v)} /><Field label="LinkedIn / URL" value={cv.personal.linkedin} onChange={(v) => updatePersonal("linkedin", v)} /></Row2>
             </Section>
 
-            <Section title="3. Perfil Profesional" visible={visible.summary} onToggle={() => setVisible(v => ({ ...v, summary: !v.summary }))}>
+            <Section title="3. Perfil Profesional" hint="Sintetizá en 3 o 4 líneas tus fortalezas, especialidad y valor principal." visible={visible.summary} onToggle={() => setVisible(v => ({ ...v, summary: !v.summary }))}>
               <textarea className="cvb-input" rows={4} value={cv.summary} onChange={(e) => setCv((c) => ({ ...c, summary: e.target.value }))} placeholder="Breve descripción de tu valor profesional..." />
             </Section>
 
-            <Section title="4. Experiencia Laboral" visible={visible.experience} onToggle={() => setVisible(v => ({ ...v, experience: !v.experience }))} onAdd={addExperience} addLabel="+ Puesto">
+            <Section title="4. Experiencia Laboral" hint="Detallá puestos pasados iniciando cada logro con verbos de acción e indicadores." visible={visible.experience} onToggle={() => setVisible(v => ({ ...v, experience: !v.experience }))} onAdd={addExperience} addLabel="+ Puesto">
               {cv.experience.map((exp, i) => (
                 <div key={exp.id} style={{ border: "1px solid #EAECE8", borderRadius: 8, padding: 16, marginBottom: 16, background: "#fff" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
@@ -379,7 +510,7 @@ export default function App() {
                   {exp.bullets.map((b, bi) => (
                     <div key={bi} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                       <input className="cvb-input" value={b} onChange={(e) => updateBullet(exp.id, bi, e.target.value)} placeholder="Ej: Reduje costos un 10%..." />
-                      <button className="cvb-btn" onClick={() => improveBulletAI(exp.id, bi, b)} style={{ background: palette.surface, color: palette.primary, padding: "0 12px" }} title="Optimizar frase">
+                      <button className="cvb-btn" onClick={() => improveBulletAI(exp.id, bi, b)} style={{ background: palette.surface, color: palette.primary, padding: "0 12px" }} title="Optimizar frase con IA">
                         {loadingAI === `${exp.id}-${bi}` ? "…" : <IconSparkles color={palette.primary} />}
                       </button>
                       <button className="cvb-btn" onClick={() => removeBullet(exp.id, bi)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 12px" }}>✕</button>
@@ -400,7 +531,7 @@ export default function App() {
               </div>
             </Section>
 
-            <Section title="5. Educación" visible={visible.education} onToggle={() => setVisible(v => ({ ...v, education: !v.education }))} onAdd={addEducation} addLabel="+ Estudio">
+            <Section title="5. Educación" hint="Formación académica, títulos oficiales, cursos relevantes o certificaciones." visible={visible.education} onToggle={() => setVisible(v => ({ ...v, education: !v.education }))} onAdd={addEducation} addLabel="+ Estudio">
               {cv.education.map((ed, i) => (
                 <div key={ed.id} style={{ border: "1px solid #EAECE8", borderRadius: 8, padding: 16, marginBottom: 16, background: "#fff" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
@@ -417,7 +548,7 @@ export default function App() {
               ))}
             </Section>
 
-            <Section title="Habilidades" visible={visible.skills} onToggle={() => setVisible(v => ({ ...v, skills: !v.skills }))} onAdd={addSkill} addLabel="+">
+            <Section title="Habilidades" hint="Competencias blandas y técnicas esenciales para tu puesto." visible={visible.skills} onToggle={() => setVisible(v => ({ ...v, skills: !v.skills }))} onAdd={addSkill} addLabel="+">
               {cv.skills.map((s) => (
                 <div key={s.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                   <input className="cvb-input" value={s.name} onChange={(e) => updateSkillName(s.id, e.target.value)} placeholder="Ej. Liderazgo de equipos" />
@@ -426,7 +557,7 @@ export default function App() {
               ))}
             </Section>
 
-            <Section title="Herramientas / Software" visible={visible.tools ?? true} onToggle={() => setVisible(v => ({ ...v, tools: !v.tools }))} onAdd={addTool} addLabel="+">
+            <Section title="Herramientas / Software" hint="Programas, sistemas y tecnologías que manejás (Excel, SAP, etc.)." visible={visible.tools ?? true} onToggle={() => setVisible(v => ({ ...v, tools: !v.tools }))} onAdd={addTool} addLabel="+">
               {cv.tools.map((t) => (
                 <div key={t.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                   <input className="cvb-input" value={t.name} onChange={(e) => updateToolName(t.id, e.target.value)} placeholder="Ej. Excel, Power BI, SAP, Amadeus" />
@@ -435,7 +566,7 @@ export default function App() {
               ))}
             </Section>
 
-            <Section title="Idiomas" visible={visible.languages} onToggle={() => setVisible(v => ({ ...v, languages: !v.languages }))} onAdd={addLanguage} addLabel="+">
+            <Section title="Idiomas" hint="Nivel de manejo oral y escrito de otras lenguas." visible={visible.languages} onToggle={() => setVisible(v => ({ ...v, languages: !v.languages }))} onAdd={addLanguage} addLabel="+">
               {cv.languages.map((l) => (
                 <div key={l.id} style={{ marginBottom: 12 }}>
                   <Row2>
@@ -454,9 +585,11 @@ export default function App() {
         </div>
 
         {/* PANEL DERECHO */}
-        <div style={{ flex: "2 1 520px", minWidth: 320, overflowX: "auto", display: "flex", justifyContent: "center", paddingBottom: 60 }}>
-          <div ref={printRef} className="print-area">
-            <CVPreview data={cv} templateId={templateId} palette={palette} font={currentFontFamily} visible={visible} />
+        <div className="panel-right-mobile" style={{ flex: "2 1 520px", minWidth: 320, overflowX: "auto", display: "flex", justifyContent: "center", paddingBottom: 60 }}>
+          <div className="print-area-container">
+            <div ref={printRef} className="print-area">
+              <CVPreview data={cv} templateId={templateId} palette={palette} font={currentFontFamily} visible={visible} />
+            </div>
           </div>
         </div>
 
@@ -499,16 +632,17 @@ function formatMarkdown(text) {
 }
 
 /* ---------- COMPONENTES SECUNDARIOS ---------- */
-function Section({ title, children, onAdd, addLabel, visible = true, onToggle }) { 
+function Section({ title, hint, children, onAdd, addLabel, visible = true, onToggle }) { 
   return (
     <div style={{ background: "#fff", border: "1px solid #EAECE8", borderRadius: 12, padding: 24, width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: visible ? 18 : 0, alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: visible ? (hint ? 6 : 18) : 0, alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {onToggle && <button className="eye-btn" onClick={onToggle} title={visible ? "Ocultar" : "Mostrar"}>{visible ? <IconEye color="#AAA" /> : <IconEyeOff color="#AAA" />}</button>}
           <h3 style={{ fontSize: 12, fontWeight: 700, margin: 0, color: visible ? "#2B2B2B" : "#AAA", textTransform: "uppercase", letterSpacing: "0.5px" }}>{title}</h3>
         </div>
         {visible && onAdd && <button className="cvb-btn" onClick={onAdd} style={{ background: "#F4F5F4", color: "#666", fontSize: 12, padding: "4px 10px" }}>{addLabel}</button>}
       </div>
+      {visible && hint && <p style={{ fontSize: 11.5, color: "#777", margin: "0 0 16px" }}>{hint}</p>}
       {visible && children}
     </div>
   ); 
