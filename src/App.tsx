@@ -28,6 +28,19 @@ function normalizeTools(tools) {
   return tools.map((t) => typeof t === "string" ? { id: uid(), name: t } : { id: t.id || uid(), name: t.name || "" });
 }
 
+function calculateCompleteness(cv) {
+  let score = 0;
+  if (cv.personal.name) score += 10;
+  if (cv.personal.title) score += 10;
+  if (cv.personal.email && cv.personal.phone) score += 10;
+  if (cv.summary && cv.summary.length > 25) score += 15;
+  if (cv.experience.some(e => e.role && e.company && e.bullets.some(b => b.length > 5))) score += 25;
+  if (cv.education.some(ed => ed.degree && ed.institution)) score += 10;
+  if (cv.skills.some(s => s.name.trim())) score += 10;
+  if (cv.tools.some(t => t.name.trim())) score += 10;
+  return Math.min(score, 100);
+}
+
 const STORAGE_KEY = "cv-builder-state";
 
 /* ---------- ÍCONOS VECTORIALES ---------- */
@@ -43,7 +56,9 @@ const IconArrowDown = ({ color = "currentColor", size = 12 }) => (<svg width={si
 const IconPalette = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 6 }}><circle cx="13.5" cy="6.5" r=".5" fill={color}/><circle cx="17.5" cy="10.5" r=".5" fill={color}/><circle cx="8.5" cy="7.5" r=".5" fill={color}/><circle cx="6.5" cy="12.5" r=".5" fill={color}/><path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10c1.38 0 2.5-1.12 2.5-2.5 0-.61-.23-1.21-.64-1.67-.38-.43-.6-.98-.6-1.58 0-1.38 1.12-2.5 2.5-2.5H18c2.21 0 4-1.79 4-4 0-4.97-4.48-9-10-9z"/></svg>);
 const IconHeart = ({ color = "#C47165", size = 15 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginLeft: 6 }}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>);
 const IconTrash = ({ color = "#888", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 4 }}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>);
-const IconInfo = ({ color = "#888", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 4 }}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>);
+const IconTarget = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 6 }}><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>);
+const IconMoon = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 4 }}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>);
+const IconSun = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 4 }}><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>);
 
 /* ---------- PALETAS NÓRDICAS ---------- */
 const PRESET_PALETTES = [
@@ -118,6 +133,7 @@ async function callClaude(prompt) {
 /* ---------- APP PRINCIPAL ---------- */
 export default function App() {
   const [showLanding, setShowLanding] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const [cv, setCv] = useState(emptyCV());
   const [templateId, setTemplateId] = useState("nordico");
   const [palette, setPalette] = useState(PRESET_PALETTES[0]); 
@@ -128,8 +144,13 @@ export default function App() {
   const [aiFeedback, setAiFeedback] = useState(""); 
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [activeTabMobile, setActiveTabMobile] = useState("editor"); // 'editor' | 'preview'
-  
+  const [activeTabMobile, setActiveTabMobile] = useState("editor");
+
+  /* ESTADOS CAZADOR ATS */
+  const [jobDescription, setJobDescription] = useState("");
+  const [atsAnalysis, setAtsAnalysis] = useState(null);
+  const [loadingATS, setLoadingATS] = useState(false);
+
   const saveTimer = useRef(null);
   const printRef = useRef(null);
 
@@ -144,6 +165,7 @@ export default function App() {
         if (parsed.templateId) setTemplateId(parsed.templateId);
         if (parsed.palette) setPalette(parsed.palette);
         if (parsed.selectedFont) setSelectedFont(parsed.selectedFont);
+        if (parsed.darkMode !== undefined) setDarkMode(parsed.darkMode);
         if (parsed.visible) setVisible({ photo: true, summary: true, experience: true, education: true, skills: true, languages: true, tools: true, ...parsed.visible, tools: parsed.visible.tools ?? true });
       }
     } catch (e) {}
@@ -153,14 +175,16 @@ export default function App() {
   useEffect(() => {
     if (!loaded) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ cv, templateId, palette, selectedFont, visible })); } catch (e) {} }, 700);
+    saveTimer.current = setTimeout(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ cv, templateId, palette, selectedFont, darkMode, visible })); } catch (e) {} }, 700);
     return () => clearTimeout(saveTimer.current);
-  }, [cv, templateId, palette, selectedFont, visible, loaded]);
+  }, [cv, templateId, palette, selectedFont, darkMode, visible, loaded]);
 
   const handleResetCV = () => {
     if (window.confirm("¿Seguro que querés borrar todo el contenido y empezar un CV desde cero?")) {
       localStorage.removeItem(STORAGE_KEY);
       setCv(emptyCV());
+      setAtsAnalysis(null);
+      setJobDescription("");
     }
   };
 
@@ -200,6 +224,43 @@ export default function App() {
         setAiFeedback(generateFallbackAnalysis(cv));
       }, 600);
     }
+  };
+
+  const analyzeJobKeywords = async () => {
+    if (!jobDescription.trim()) return;
+    setLoadingATS(true);
+    try {
+      const cvFullText = `${cv.summary} ${cv.experience.map(e=> `${e.role} ${e.company} ${e.bullets.join(' ')}`).join(' ')} ${cv.skills.map(s=>s.name).join(' ')} ${cv.tools.map(t=>t.name).join(' ')}`.toLowerCase();
+      
+      const prompt = `Analizá la siguiente oferta laboral y comparala con el texto de un CV. Extraé las 8 palabras clave técnicas o de competencias más importantes de la oferta laboral.\nDevolvé ÚNICAMENTE un formato JSON estricto así: {"keywords": ["palabra1", "palabra2", "palabra3"]}\n\nOferta Laboral: "${jobDescription}"`;
+      const responseText = await callClaude(prompt);
+      const parsed = JSON.parse(responseText);
+      const extractedKeywords = parsed.keywords || [];
+
+      const matched = [];
+      const missing = [];
+
+      extractedKeywords.forEach(word => {
+        if (cvFullText.includes(word.toLowerCase())) {
+          matched.push(word);
+        } else {
+          missing.push(word);
+        }
+      });
+
+      const score = Math.round((matched.length / (extractedKeywords.length || 1)) * 100);
+      setAtsAnalysis({ matched, missing, score });
+    } catch (e) {
+      const words = jobDescription.toLowerCase().match(/\b[a-záéíóúñ]{4,}\b/g) || [];
+      const cvFullText = `${cv.summary} ${cv.experience.map(e=> `${e.role} ${e.bullets.join(' ')}`).join(' ')} ${cv.skills.map(s=>s.name).join(' ')} ${cv.tools.map(t=>t.name).join(' ')}`.toLowerCase();
+      const uniqueWords = Array.from(new Set(words)).filter(w => !["para", "como", "con", "sobre", "este", "esta", "entre", "donde", "desde"].includes(w)).slice(0, 8);
+      
+      const matched = uniqueWords.filter(w => cvFullText.includes(w));
+      const missing = uniqueWords.filter(w => !cvFullText.includes(w));
+      const score = Math.round((matched.length / (uniqueWords.length || 1)) * 100);
+      setAtsAnalysis({ matched, missing, score });
+    }
+    setLoadingATS(false);
   };
 
   const improveBulletAI = async (expId, idx, text) => {
@@ -245,8 +306,20 @@ export default function App() {
   };
 
   const currentFontFamily = FONTS.find(f => f.id === selectedFont)?.family || "'Nunito', sans-serif";
+  const completeness = calculateCompleteness(cv);
 
-  /* ---------- RENDER LANDING PAGE INTRO ---------- */
+  /* ESTILOS DINÁMICOS MODO OSCURO */
+  const uiBg = darkMode ? "#181818" : "#F4F5F4";
+  const headerBg = darkMode ? "#222222" : "#E8E2D5";
+  const headerBorder = darkMode ? "#333333" : "#D8D0C0";
+  const cardBg = darkMode ? "#242424" : "#FFFFFF";
+  const cardBorder = darkMode ? "#333333" : "#EAECE8";
+  const textColor = darkMode ? "#E0E0E0" : "#4A4A4A";
+  const headingColor = darkMode ? "#FFFFFF" : "#2B2B2B";
+  const inputBg = darkMode ? "#2D2D2D" : "#FCFCFC";
+  const inputBorder = darkMode ? "#404040" : "#E2E4E2";
+
+  /* ---------- LANDING PAGE INTRO ---------- */
   if (showLanding) {
     return (
       <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", background: "#F4F5F4", minHeight: "100vh", color: "#333", display: "flex", flexDirection: "column" }}>
@@ -257,71 +330,70 @@ export default function App() {
           .landing-card { background: #fff; border: 1px solid #E2E4E2; border-radius: 16px; padding: 24px; flex: 1; min-width: 260px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
         `}</style>
         
-        {/* Header Landing */}
         <div style={{ padding: "20px 32px", background: "#E8E2D5", borderBottom: "1px solid #D8D0C0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "#2B2B2B" }}>
             Impulso CV <span style={{ color: palette.primary, background: "#FFF", padding: "2px 8px", borderRadius: 10, fontSize: 10, verticalAlign: "middle", marginLeft: 6, fontWeight: 600 }}>PREMIUM</span>
           </h1>
           <button onClick={() => setShowLanding(false)} style={{ background: palette.primary, color: "#fff", border: "none", padding: "8px 18px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            Crear mi CV
+            Crear mi CV (Gratis)
           </button>
         </div>
 
-        {/* Hero Section */}
         <div style={{ maxWidth: 900, margin: "0 auto", padding: "60px 24px 40px", textAlign: "center" }}>
           <span style={{ background: "#E8E2D5", color: "#555", padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-            ✨ Generador Inteligente de Currículum
+            ✨ HERRAMIENTA 100% GRATUITA
           </span>
           <h2 style={{ fontSize: "clamp(28px, 5vw, 44px)", fontWeight: 800, color: "#222", margin: "20px 0 16px", lineHeight: 1.25 }}>
             Destacá en tus postulaciones con un CV profesional y optimizado.
           </h2>
-          <p style={{ fontSize: 16, color: "#666", lineHeight: 1.6, maxWidth: 680, margin: "0 auto 32px" }}>
-            Impulso CV combina diseño nórdico minimalista, compatibilidad ATS para filtros automáticos y análisis con Inteligencia Artificial para potenciar tus oportunidades laborales.
+          <p style={{ fontSize: 16, color: "#666", lineHeight: 1.6, maxWidth: 720, margin: "0 auto 10px" }}>
+            Impulso CV combina plantillas profesionales, cazador de palabras clave ATS, medidor de completitud en tiempo real y análisis con Inteligencia Artificial para potenciar tu perfil laboral.
+          </p>
+          <p style={{ fontSize: 13.5, color: "#888", margin: "0 auto 32px", fontWeight: 500 }}>
+            Un servicio 100% gratuito diseñado para impulsar tu carrera sin costos ni registros.
           </p>
 
           <button className="landing-btn-main" onClick={() => setShowLanding(false)}>
-            Comenzar mi CV ahora →
+            Comenzar mi CV ahora (Gratis) →
           </button>
         </div>
 
-        {/* Grid de Funcionalidades */}
         <div style={{ maxWidth: 1000, margin: "0 auto 60px", padding: "0 24px", display: "flex", flexWrap: "wrap", gap: 20 }}>
           <div className="landing-card">
-            <div style={{ fontSize: 28, marginBottom: 12 }}>🎨</div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Diseño & Color Libre</h3>
+            <div style={{ fontSize: 28, marginBottom: 12 }}>🎯</div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Cazador de Palabras ATS</h3>
             <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
-              Elegí entre paletas nórdicas armónicas o creá tu tono exacto con nuestro selector de color X/Y en tiempo real.
+              Pegá el texto de cualquier oferta laboral y la IA detectará qué palabras clave le faltan a tu CV para superar los filtros de selección.
+            </p>
+          </div>
+
+          <div className="landing-card">
+            <div style={{ fontSize: 28, marginBottom: 12 }}>📊</div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Medidor de Completitud</h3>
+            <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
+              Seguí en tiempo real la calidad del contenido para asegurarte de incluir todos los elementos requeridos por reclutadores.
+            </p>
+          </div>
+
+          <div className="landing-card">
+            <div style={{ fontSize: 28, marginBottom: 12 }}>🎨</div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Diseño & Modo Oscuro</h3>
+            <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
+              Elegí entre paletas prediseñadas o creá tu propio tono X/Y, con opción de modo oscuro para descansar la vista mientras redactás.
             </p>
           </div>
 
           <div className="landing-card">
             <div style={{ fontSize: 28, marginBottom: 12 }}>🤖</div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Evaluación Inteligente (IA)</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Optimización por IA</h3>
             <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
-              Recibí feedback en vivo de un reclutador virtual sobre tu redacción, verbos de impacto y estructura.
-            </p>
-          </div>
-
-          <div className="landing-card">
-            <div style={{ fontSize: 28, marginBottom: 12 }}>📄</div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Formato Apto Filtros ATS</h3>
-            <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
-              Estructura optimizada para superar los sistemas automatizados de selección de las empresas.
-            </p>
-          </div>
-
-          <div className="landing-card">
-            <div style={{ fontSize: 28, marginBottom: 12 }}>⚡</div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Exportación PDF Impecable</h3>
-            <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
-              Cortes de página automáticos para que tus títulos e información nunca queden cortados.
+              Mejorá frases individuales o recibí una devolución integral sobre tu perfil redactado por un Reclutador Virtual.
             </p>
           </div>
         </div>
 
-        {/* Footer Landing */}
         <div style={{ marginTop: "auto", padding: "20px", textAlign: "center", borderTop: "1px solid #E2E4E2", fontSize: 13, color: "#777" }}>
-          Impulso CV Premium • Generador Profesional de Currículum
+          Impulso CV Premium • Servicio Gratuito para Generación Profesional de Currículum
         </div>
       </div>
     );
@@ -329,15 +401,15 @@ export default function App() {
 
   /* ---------- BUILDER / EDITOR ---------- */
   return (
-    <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", background: "#F4F5F4", minHeight: "100vh", position: "relative", color: "#4A4A4A" }}>
+    <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", background: uiBg, minHeight: "100vh", position: "relative", color: textColor, transition: "background 0.3s, color 0.3s" }}>
       <style>{`
         * { box-sizing: border-box; }
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
         .cvb-btn { cursor:pointer; border:none; border-radius:6px; font-weight:500; transition:all .2s; display:inline-flex; align-items:center; justify-content:center; }
         .cvb-btn:hover { opacity:.85; transform: translateY(-1px); }
-        .cvb-input { width:100%; border:1px solid #E2E4E2; border-radius:6px; padding:10px 12px; font-size:13.5px; font-family:'Inter',sans-serif; background: #FCFCFC; color: #4A4A4A; font-weight:400; }
-        .cvb-input:focus { outline:2px solid ${palette.primary}; outline-offset:1px; background: #fff; }
-        .cvb-label { font-size:11px; font-weight:600; color:#6B726B; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:6px; }
+        .cvb-input { width:100%; border:1px solid ${inputBorder}; border-radius:6px; padding:10px 12px; font-size:13.5px; font-family:'Inter',sans-serif; background: ${inputBg}; color: ${textColor}; font-weight:400; }
+        .cvb-input:focus { outline:2px solid ${palette.primary}; outline-offset:1px; background: ${darkMode ? '#333' : '#fff'}; }
+        .cvb-label { font-size:11px; font-weight:600; color:${darkMode ? '#A0A0A0' : '#6B726B'}; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:6px; }
         .print-area { width: 794px; min-height: 1123px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin: 0 auto; }
         
         .page-block { break-inside: avoid !important; page-break-inside: avoid !important; padding-top: 14px; margin-top: 6px; }
@@ -347,13 +419,13 @@ export default function App() {
         .color-swatch:hover { transform: scale(1.1); }
         .eye-btn { background: none; border: none; cursor: pointer; opacity: 0.5; padding: 0; display:flex; }
         .eye-btn:hover { opacity: 1; }
-        .arrow-btn { background: #EAECE8; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; display:flex; align-items:center; }
-        .arrow-btn:hover { background: #D5D7D3; }
+        .arrow-btn { background: ${darkMode ? '#333' : '#EAECE8'}; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; display:flex; align-items:center; }
+        .arrow-btn:hover { background: ${darkMode ? '#444' : '#D5D7D3'}; }
         
-        .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
-        .modal-content { background: #fff; padding: 32px; border-radius: 16px; width: 90%; maxWidth: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
+        .modal-content { background: ${cardBg}; border: 1px solid ${cardBorder}; padding: 32px; border-radius: 16px; width: 90%; maxWidth: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
         .ai-text h3 { color: ${palette.primary}; font-size: 15px; margin: 16px 0 8px; border-bottom: 1px solid ${palette.accent}; padding-bottom: 4px; font-weight:600; }
-        .ai-text p { font-size: 14px; line-height: 1.6; color: #4A4A4A; margin: 0 0 12px; }
+        .ai-text p { font-size: 14px; line-height: 1.6; color: ${textColor}; margin: 0 0 12px; }
 
         /* RESPONSIVE CELULAR */
         @media (max-width: 768px) {
@@ -361,9 +433,9 @@ export default function App() {
           .cvb-header-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
           .cvb-header-actions button { flex: 1 1 auto; font-size: 11px !important; padding: 8px 10px !important; justify-content: center; }
           .cvb-main-layout { padding: 12px !important; gap: 16px !important; }
-          .mobile-tabs { display: flex !important; width: 100%; background: #E2E4E2; border-radius: 8px; padding: 4px; margin-bottom: 12px; }
-          .mobile-tab-btn { flex: 1; padding: 8px; border: none; background: transparent; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; }
-          .mobile-tab-btn.active { background: #fff; color: ${palette.primary}; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+          .mobile-tabs { display: flex !important; width: 100%; background: ${darkMode ? '#333' : '#E2E4E2'}; border-radius: 8px; padding: 4px; margin-bottom: 12px; }
+          .mobile-tab-btn { flex: 1; padding: 8px; border: none; background: transparent; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; color: ${textColor}; }
+          .mobile-tab-btn.active { background: ${cardBg}; color: ${palette.primary}; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
           .panel-left-mobile { display: ${activeTabMobile === 'editor' ? 'block' : 'none'} !important; width: 100% !important; max-width: 100% !important; }
           .panel-right-mobile { display: ${activeTabMobile === 'preview' ? 'flex' : 'none'} !important; width: 100% !important; overflow-x: auto !important; }
           .print-area-container { transform: scale(0.44); transform-origin: top center; margin-bottom: -600px; }
@@ -374,21 +446,24 @@ export default function App() {
       `}</style>
 
       {/* HEADER DE LA APP */}
-      <div className="cvb-header-nav" style={{ padding: "18px 32px", background: "#E8E2D5", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #D8D0C0" }}>
+      <div className="cvb-header-nav" style={{ padding: "18px 32px", background: headerBg, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${headerBorder}` }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "#2B2B2B", letterSpacing: "-0.5px", display: "flex", alignItems: "center" }}>
-            Impulso CV <span style={{ color: palette.primary, background: "#FFF", padding: "2px 8px", borderRadius: 10, fontSize: 10, verticalAlign: "middle", marginLeft: 8, border: `1px solid ${palette.secondary}40`, fontWeight: 600 }}>PREMIUM</span>
+          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: headingColor, letterSpacing: "-0.5px", display: "flex", alignItems: "center" }}>
+            Impulso CV <span style={{ color: palette.primary, background: cardBg, padding: "2px 8px", borderRadius: 10, fontSize: 10, verticalAlign: "middle", marginLeft: 8, border: `1px solid ${palette.secondary}40`, fontWeight: 600 }}>PREMIUM</span>
           </h1>
         </div>
         <div className="cvb-header-actions" style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button className="cvb-btn" onClick={() => setShowLanding(true)} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: "1px solid #CFC7B8", color: "#555" }}>
-            ℹ️ Ver Guía
+          <button className="cvb-btn" onClick={() => setDarkMode(!darkMode)} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor }}>
+            {darkMode ? <IconSun color="#FFD700" /> : <IconMoon color="#555" />} {darkMode ? "Claro" : "Oscuro"}
           </button>
-          <button className="cvb-btn" onClick={handleResetCV} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: "1px solid #CFC7B8", color: "#666" }} title="Limpiar todos los campos">
-            <IconTrash color="#666" /> Empezar de cero
+          <button className="cvb-btn" onClick={() => setShowLanding(true)} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor }}>
+            ℹ️ Guía
           </button>
-          <button className="cvb-btn" onClick={analyzeEntireCV} style={{ padding: "8px 14px", fontSize: 12, background: "#FFF", border: "1px solid #CFC7B8", color: "#333", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-            <IconSparkles color={palette.primary} /> Revisar con IA
+          <button className="cvb-btn" onClick={handleResetCV} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor }} title="Limpiar todos los campos">
+            <IconTrash color={textColor} /> Borrar
+          </button>
+          <button className="cvb-btn" onClick={analyzeEntireCV} style={{ padding: "8px 14px", fontSize: 12, background: cardBg, border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <IconSparkles color={palette.primary} /> Revisar IA
           </button>
           <button className="cvb-btn" onClick={handleDownloadPdf} disabled={downloading} style={{ padding: "8px 18px", fontSize: 12, background: palette.primary, color: "#fff", opacity: downloading ? 0.6 : 1 }}>
             ⬇ Descargar PDF
@@ -411,29 +486,101 @@ export default function App() {
         {/* PANEL IZQUIERDO */}
         <div className="panel-left-mobile" style={{ flex: "1 1 400px", minWidth: 320, maxWidth: 480 }}>
           
+          {/* MEDIDOR DE COMPLETITUD */}
+          <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 18, marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                📊 Completitud del CV
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: palette.primary }}>
+                {completeness}%
+              </span>
+            </div>
+            <div style={{ width: "100%", height: 8, background: darkMode ? "#333" : "#E2E4E2", borderRadius: 4, overflow: "hidden" }}>
+              <div style={{ width: `${completeness}%`, height: "100%", background: palette.primary, transition: "width 0.4s ease" }} />
+            </div>
+            <p style={{ fontSize: 11, color: darkMode ? "#888" : "#777", margin: "8px 0 0" }}>
+              {completeness < 50 ? "Agregá más secciones para enriquecer tu perfil." : completeness < 85 ? "¡Vas muy bien! Sumá tus logros o métricas clave." : "¡Excelente nivel de detalle!"}
+            </p>
+          </div>
+
+          {/* CAZADOR DE PALABRAS CLAVE ATS */}
+          <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 20, marginBottom: 20 }}>
+            <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 6px", color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px", display: "flex", alignItems: "center" }}>
+              <IconTarget color={palette.primary} /> 🎯 Cazador de Palabras ATS
+            </h3>
+            <p style={{ fontSize: 11.5, color: darkMode ? "#999" : "#666", margin: "0 0 12px" }}>
+              Pegá el texto del aviso de empleo para verificar qué términos clave te faltan incluir.
+            </p>
+            
+            <textarea 
+              className="cvb-input" 
+              rows={3} 
+              value={jobDescription} 
+              onChange={(e) => setJobDescription(e.target.value)} 
+              placeholder="Pegá aquí el texto de la oferta de trabajo..." 
+              style={{ marginBottom: 10 }}
+            />
+            
+            <button className="cvb-btn" onClick={analyzeJobKeywords} disabled={loadingATS || !jobDescription.trim()} style={{ width: "100%", padding: "8px", fontSize: 12, background: palette.surface, color: palette.primary, border: `1px solid ${palette.accent}` }}>
+              {loadingATS ? "Analizando palabras..." : "Buscar Coincidencias"}
+            </button>
+
+            {atsAnalysis && (
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${cardBorder}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 600 }}>Coincidencia con la oferta:</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: atsAnalysis.score > 60 ? "#4CAF50" : "#E53935" }}>{atsAnalysis.score}%</span>
+                </div>
+
+                {atsAnalysis.missing.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: "#E53935", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Te faltan agregar:</span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {atsAnalysis.missing.map((w, i) => (
+                        <span key={i} style={{ background: darkMode ? "#3A1E1E" : "#FDEAE8", color: "#C45B52", fontSize: 11, padding: "2px 6px", borderRadius: 4 }}>+ {w}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {atsAnalysis.matched.length > 0 && (
+                  <div>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: "#4CAF50", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Ya incluidas en tu CV:</span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {atsAnalysis.matched.map((w, i) => (
+                        <span key={i} style={{ background: darkMode ? "#1E3A1E" : "#E8F5E9", color: "#2E7D32", fontSize: 11, padding: "2px 6px", borderRadius: 4 }}>✓ {w}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* ESTILO Y COLOR */}
-          <div style={{ background: "#fff", border: "1px solid #EAECE8", borderRadius: 12, padding: 24, marginBottom: 20 }}>
+          <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 20 }}>
             <div style={{ marginBottom: 12 }}>
-              <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 4px", color: "#2B2B2B", textTransform: "uppercase", letterSpacing: "0.5px" }}>1. ESTILO</h3>
-              <p style={{ fontSize: 11.5, color: "#777", margin: 0 }}>Ajustá la paleta de color, tipografía y la distribución de la hoja.</p>
+              <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 4px", color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>1. ESTILO</h3>
+              <p style={{ fontSize: 11.5, color: darkMode ? "#999" : "#777", margin: 0 }}>Ajustá la paleta de color, tipografía y la distribución de la hoja.</p>
             </div>
             
             <label className="cvb-label">Paletas Armónicas</label>
             <div style={{ display: "flex", gap: 10, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
               {PRESET_PALETTES.map(p => (
-                <div key={p.id} onClick={() => setPalette(p)} className="color-swatch" style={{ background: p.primary, border: palette.id === p.id ? `3px solid #2B2B2B` : "2px solid transparent" }} title={p.name} />
+                <div key={p.id} onClick={() => setPalette(p)} className="color-swatch" style={{ background: p.primary, border: palette.id === p.id ? `3px solid ${headingColor}` : "2px solid transparent" }} title={p.name} />
               ))}
             </div>
 
             {/* SELECTOR DE COLOR X/Y LIBRE */}
-            <div style={{ marginBottom: 20, background: "#F9FAF8", border: "1px solid #EAECE8", borderRadius: 10, padding: 12 }}>
+            <div style={{ marginBottom: 20, background: darkMode ? "#2D2D2D" : "#F9FAF8", border: `1px solid ${cardBorder}`, borderRadius: 10, padding: 12 }}>
               <label className="cvb-label" style={{ marginBottom: 6 }}>Selector de Color Libre (Cualquier tono)</label>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <input 
                   type="color" 
                   value={palette.primary.length === 7 ? palette.primary : "#9C4235"} 
                   onChange={(e) => setPalette(generateCustomPalette(e.target.value))} 
-                  style={{ width: 42, height: 36, border: "1px solid #CCC", borderRadius: 6, cursor: "pointer", padding: 2, background: "#fff" }} 
+                  style={{ width: 42, height: 36, border: `1px solid ${cardBorder}`, borderRadius: 6, cursor: "pointer", padding: 2, background: cardBg }} 
                 />
                 <input 
                   className="cvb-input"
@@ -448,7 +595,7 @@ export default function App() {
             <label className="cvb-label">Tono de Fuente</label>
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
               {FONTS.map(f => (
-                <button key={f.id} onClick={() => setSelectedFont(f.id)} style={{ flex: 1, padding: "8px", fontSize: 12, borderRadius: 6, border: selectedFont === f.id ? `1px solid ${palette.primary}` : "1px solid #EAECE8", background: selectedFont === f.id ? palette.surface : "#fff", color: selectedFont === f.id ? palette.primary : "#666", fontWeight: selectedFont === f.id ? 600 : 400, fontFamily: f.family }}>
+                <button key={f.id} onClick={() => setSelectedFont(f.id)} style={{ flex: 1, padding: "8px", fontSize: 12, borderRadius: 6, border: selectedFont === f.id ? `1px solid ${palette.primary}` : `1px solid ${cardBorder}`, background: selectedFont === f.id ? palette.surface : cardBg, color: selectedFont === f.id ? palette.primary : textColor, fontWeight: selectedFont === f.id ? 600 : 400, fontFamily: f.family }}>
                   {f.name}
                 </button>
               ))}
@@ -457,31 +604,20 @@ export default function App() {
             <label className="cvb-label">Diseño de Hoja</label>
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
               {TEMPLATES.map((t) => (
-                <div key={t.id} onClick={() => setTemplateId(t.id)} style={{ padding: "12px 14px", borderRadius: 8, background: templateId === t.id ? palette.surface : "#fff", border: templateId === t.id ? `1px solid ${palette.primary}` : "1px solid #EAECE8", cursor: "pointer", transition: "all 0.2s" }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: templateId === t.id ? palette.primary : "#333" }}>{t.name}</span>
-                  <p style={{ fontSize: 11, margin: "4px 0 0", color: "#777", fontWeight: 400 }}>{t.blurb}</p>
+                <div key={t.id} onClick={() => setTemplateId(t.id)} style={{ padding: "12px 14px", borderRadius: 8, background: templateId === t.id ? palette.surface : cardBg, border: templateId === t.id ? `1px solid ${palette.primary}` : `1px solid ${cardBorder}`, cursor: "pointer", transition: "all 0.2s" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: templateId === t.id ? palette.primary : headingColor }}>{t.name}</span>
+                  <p style={{ fontSize: 11, margin: "4px 0 0", color: darkMode ? "#999" : "#777", fontWeight: 400 }}>{t.blurb}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div style={{ background: "#F9FAF8", border: "1px solid #EAECE8", borderRadius: 12, padding: 18, marginBottom: 20 }}>
-            <h4 style={{ fontSize: 11, fontWeight: 700, margin: "0 0 10px", color: "#4A4A4A", textTransform: "uppercase", display: "flex", alignItems: "center" }}>
-              <IconSparkles color="#4A4A4A" /> Recomendaciones Clave
-            </h4>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#666", lineHeight: 1.6, fontWeight: 400 }}>
-              <li style={{ marginBottom: 4 }}><b>Métricas:</b> Cuantificá tus logros siempre que sea posible.</li>
-              <li style={{ marginBottom: 4 }}><b>Contacto:</b> Verificá que tu teléfono y mail estén correctos.</li>
-              <li><b>Ortografía:</b> Una lectura atenta final suma mucho profesionalismo.</li>
-            </ul>
-          </div>
-
           {/* FORMULARIO */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <Section title="2. Datos personales" hint="Información de contacto directa y foto profesional (opcional)." visible={visible.photo} onToggle={() => setVisible(v => ({ ...v, photo: !v.photo }))}>
+            <Section title="2. Datos personales" hint="Información de contacto directa y foto profesional (opcional)." visible={visible.photo} onToggle={() => setVisible(v => ({ ...v, photo: !v.photo }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
-                {cv.personal.photo ? <img src={cv.personal.photo} alt="Perfil" style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover", border: `1px solid ${palette.secondary}` }} /> : <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#F4F5F4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#AAA", fontWeight: 500 }}>FOTO</div>}
-                <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e.target.files && e.target.files[0])} style={{ fontSize: 12, color: "#666" }} />
+                {cv.personal.photo ? <img src={cv.personal.photo} alt="Perfil" style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover", border: `1px solid ${palette.secondary}` }} /> : <div style={{ width: 60, height: 60, borderRadius: "50%", background: darkMode ? "#333" : "#F4F5F4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#AAA", fontWeight: 500 }}>FOTO</div>}
+                <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e.target.files && e.target.files[0])} style={{ fontSize: 12, color: textColor }} />
               </div>
               <Field label="Nombre completo" value={cv.personal.name} onChange={(v) => updatePersonal("name", v)} />
               <Field label="Puesto / Titular" value={cv.personal.title} onChange={(v) => updatePersonal("title", v)} />
@@ -489,18 +625,18 @@ export default function App() {
               <Row2><Field label="Ubicación" value={cv.personal.location} onChange={(v) => updatePersonal("location", v)} /><Field label="LinkedIn / URL" value={cv.personal.linkedin} onChange={(v) => updatePersonal("linkedin", v)} /></Row2>
             </Section>
 
-            <Section title="3. Perfil Profesional" hint="Sintetizá en 3 o 4 líneas tus fortalezas, especialidad y valor principal." visible={visible.summary} onToggle={() => setVisible(v => ({ ...v, summary: !v.summary }))}>
+            <Section title="3. Perfil Profesional" hint="Sintetizá en 3 o 4 líneas tus fortalezas, especialidad y valor principal." visible={visible.summary} onToggle={() => setVisible(v => ({ ...v, summary: !v.summary }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               <textarea className="cvb-input" rows={4} value={cv.summary} onChange={(e) => setCv((c) => ({ ...c, summary: e.target.value }))} placeholder="Breve descripción de tu valor profesional..." />
             </Section>
 
-            <Section title="4. Experiencia Laboral" hint="Detallá puestos pasados iniciando cada logro con verbos de acción e indicadores." visible={visible.experience} onToggle={() => setVisible(v => ({ ...v, experience: !v.experience }))} onAdd={addExperience} addLabel="+ Puesto">
+            <Section title="4. Experiencia Laboral" hint="Detallá puestos pasados iniciando cada logro con verbos de acción e indicadores." visible={visible.experience} onToggle={() => setVisible(v => ({ ...v, experience: !v.experience }))} onAdd={addExperience} addLabel="+ Puesto" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               {cv.experience.map((exp, i) => (
-                <div key={exp.id} style={{ border: "1px solid #EAECE8", borderRadius: 8, padding: 16, marginBottom: 16, background: "#fff" }}>
+                <div key={exp.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
                     <span style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase" }}>Puesto #{i + 1}</span>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button className="arrow-btn" onClick={() => moveExperience(i, "up")} disabled={i === 0}><IconArrowUp color="#666" /></button>
-                      <button className="arrow-btn" onClick={() => moveExperience(i, "down")} disabled={i === cv.experience.length - 1}><IconArrowDown color="#666" /></button>
+                      <button className="arrow-btn" onClick={() => moveExperience(i, "up")} disabled={i === 0}><IconArrowUp color={textColor} /></button>
+                      <button className="arrow-btn" onClick={() => moveExperience(i, "down")} disabled={i === cv.experience.length - 1}><IconArrowDown color={textColor} /></button>
                     </div>
                   </div>
                   <Row2><Field label="Puesto" value={exp.role} onChange={(v) => updateExperience(exp.id, "role", v)} /><Field label="Empresa" value={exp.company} onChange={(v) => updateExperience(exp.id, "company", v)} /></Row2>
@@ -525,20 +661,20 @@ export default function App() {
                 <h4 style={{ fontSize: 11, fontWeight: 700, margin: "0 0 8px", color: palette.primary, textTransform: "uppercase" }}>Verbos de acción sugeridos:</h4>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {ATS_VERBS.map((verb, i) => (
-                    <span key={i} style={{ background: "#fff", border: `1px solid ${palette.accent}`, color: palette.secondary, fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 4 }}>{verb}</span>
+                    <span key={i} style={{ background: cardBg, border: `1px solid ${palette.accent}`, color: palette.secondary, fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 4 }}>{verb}</span>
                   ))}
                 </div>
               </div>
             </Section>
 
-            <Section title="5. Educación" hint="Formación académica, títulos oficiales, cursos relevantes o certificaciones." visible={visible.education} onToggle={() => setVisible(v => ({ ...v, education: !v.education }))} onAdd={addEducation} addLabel="+ Estudio">
+            <Section title="5. Educación" hint="Formación académica, títulos oficiales, cursos relevantes o certificaciones." visible={visible.education} onToggle={() => setVisible(v => ({ ...v, education: !v.education }))} onAdd={addEducation} addLabel="+ Estudio" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               {cv.education.map((ed, i) => (
-                <div key={ed.id} style={{ border: "1px solid #EAECE8", borderRadius: 8, padding: 16, marginBottom: 16, background: "#fff" }}>
+                <div key={ed.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
                     <span style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase" }}>Estudio #{i + 1}</span>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button className="arrow-btn" onClick={() => moveEducation(i, "up")} disabled={i === 0}><IconArrowUp color="#666" /></button>
-                      <button className="arrow-btn" onClick={() => moveEducation(i, "down")} disabled={i === cv.education.length - 1}><IconArrowDown color="#666" /></button>
+                      <button className="arrow-btn" onClick={() => moveEducation(i, "up")} disabled={i === 0}><IconArrowUp color={textColor} /></button>
+                      <button className="arrow-btn" onClick={() => moveEducation(i, "down")} disabled={i === cv.education.length - 1}><IconArrowDown color={textColor} /></button>
                     </div>
                   </div>
                   <Field label="Título / Carrera" value={ed.degree} onChange={(v) => updateEducation(ed.id, "degree", v)} />
@@ -548,7 +684,7 @@ export default function App() {
               ))}
             </Section>
 
-            <Section title="Habilidades" hint="Competencias blandas y técnicas esenciales para tu puesto." visible={visible.skills} onToggle={() => setVisible(v => ({ ...v, skills: !v.skills }))} onAdd={addSkill} addLabel="+">
+            <Section title="Habilidades" hint="Competencias blandas y técnicas esenciales para tu puesto." visible={visible.skills} onToggle={() => setVisible(v => ({ ...v, skills: !v.skills }))} onAdd={addSkill} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               {cv.skills.map((s) => (
                 <div key={s.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                   <input className="cvb-input" value={s.name} onChange={(e) => updateSkillName(s.id, e.target.value)} placeholder="Ej. Liderazgo de equipos" />
@@ -557,7 +693,7 @@ export default function App() {
               ))}
             </Section>
 
-            <Section title="Herramientas / Software" hint="Programas, sistemas y tecnologías que manejás (Excel, SAP, etc.)." visible={visible.tools ?? true} onToggle={() => setVisible(v => ({ ...v, tools: !v.tools }))} onAdd={addTool} addLabel="+">
+            <Section title="Herramientas / Software" hint="Programas, sistemas y tecnologías que manejás (Excel, SAP, etc.)." visible={visible.tools ?? true} onToggle={() => setVisible(v => ({ ...v, tools: !v.tools }))} onAdd={addTool} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               {cv.tools.map((t) => (
                 <div key={t.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                   <input className="cvb-input" value={t.name} onChange={(e) => updateToolName(t.id, e.target.value)} placeholder="Ej. Excel, Power BI, SAP, Amadeus" />
@@ -566,7 +702,7 @@ export default function App() {
               ))}
             </Section>
 
-            <Section title="Idiomas" hint="Nivel de manejo oral y escrito de otras lenguas." visible={visible.languages} onToggle={() => setVisible(v => ({ ...v, languages: !v.languages }))} onAdd={addLanguage} addLabel="+">
+            <Section title="Idiomas" hint="Nivel de manejo oral y escrito de otras lenguas." visible={visible.languages} onToggle={() => setVisible(v => ({ ...v, languages: !v.languages }))} onAdd={addLanguage} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               {cv.languages.map((l) => (
                 <div key={l.id} style={{ marginBottom: 12 }}>
                   <Row2>
@@ -577,7 +713,7 @@ export default function App() {
               ))}
             </Section>
             
-            <div style={{ textAlign: "center", padding: "24px 0 12px", color: "#777", fontSize: 12.5, fontWeight: 400, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ textAlign: "center", padding: "24px 0 12px", color: darkMode ? "#999" : "#777", fontSize: 12.5, fontWeight: 400, display: "flex", alignItems: "center", justifyContent: "center" }}>
               Espero te sirva. Muchos éxitos. <IconHeart color={palette.secondary} />
             </div>
 
@@ -600,7 +736,7 @@ export default function App() {
         <div className="modal-overlay" onClick={() => setIsAiModalOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: "#2B2B2B", display: "flex", alignItems: "center" }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: headingColor, display: "flex", alignItems: "center" }}>
                 <IconSparkles color={palette.primary} size={18} /> Feedback del Reclutador
               </h2>
               <button onClick={() => setIsAiModalOpen(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#888" }}>✕</button>
@@ -632,17 +768,17 @@ function formatMarkdown(text) {
 }
 
 /* ---------- COMPONENTES SECUNDARIOS ---------- */
-function Section({ title, hint, children, onAdd, addLabel, visible = true, onToggle }) { 
+function Section({ title, hint, children, onAdd, addLabel, visible = true, onToggle, cardBg, cardBorder, headingColor, darkMode }) { 
   return (
-    <div style={{ background: "#fff", border: "1px solid #EAECE8", borderRadius: 12, padding: 24, width: "100%" }}>
+    <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 24, width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: visible ? (hint ? 6 : 18) : 0, alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {onToggle && <button className="eye-btn" onClick={onToggle} title={visible ? "Ocultar" : "Mostrar"}>{visible ? <IconEye color="#AAA" /> : <IconEyeOff color="#AAA" />}</button>}
-          <h3 style={{ fontSize: 12, fontWeight: 700, margin: 0, color: visible ? "#2B2B2B" : "#AAA", textTransform: "uppercase", letterSpacing: "0.5px" }}>{title}</h3>
+          <h3 style={{ fontSize: 12, fontWeight: 700, margin: 0, color: visible ? headingColor : "#AAA", textTransform: "uppercase", letterSpacing: "0.5px" }}>{title}</h3>
         </div>
-        {visible && onAdd && <button className="cvb-btn" onClick={onAdd} style={{ background: "#F4F5F4", color: "#666", fontSize: 12, padding: "4px 10px" }}>{addLabel}</button>}
+        {visible && onAdd && <button className="cvb-btn" onClick={onAdd} style={{ background: darkMode ? "#333" : "#F4F5F4", color: darkMode ? "#DDD" : "#666", fontSize: 12, padding: "4px 10px" }}>{addLabel}</button>}
       </div>
-      {visible && hint && <p style={{ fontSize: 11.5, color: "#777", margin: "0 0 16px" }}>{hint}</p>}
+      {visible && hint && <p style={{ fontSize: 11.5, color: darkMode ? "#999" : "#777", margin: "0 0 16px" }}>{hint}</p>}
       {visible && children}
     </div>
   ); 
