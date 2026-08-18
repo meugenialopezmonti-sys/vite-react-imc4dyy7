@@ -62,6 +62,7 @@ const IconTrash = ({ color = "#888", size = 14 }) => (<svg width={size} height={
 const IconTarget = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 6 }}><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>);
 const IconMoon = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 4 }}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>);
 const IconSun = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 4 }}><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>);
+const IconUpload = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 6 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>);
 
 /* ---------- PALETAS NÓRDICAS ---------- */
 const PRESET_PALETTES = [
@@ -96,6 +97,35 @@ const DENSITIES = [
 
 const ATS_VERBS = ["Lideré", "Optimicé", "Implementé", "Reduje", "Coordiné", "Aumenté", "Diseñé", "Negocié", "Gestioné", "Desarrollé"];
 
+/* ---------- MOTOR DE ANÁLISIS DE RESPALDO ---------- */
+function generateFallbackAnalysis(cv) {
+  const name = cv.personal.name ? cv.personal.name.split(" ")[0] : "Profesional";
+  const hasMetrics = cv.experience.some(e => e.bullets.some(b => /\d+|%|\$/.test(b)));
+  
+  let fortalezas = `Estructura clara y legible. `;
+  if (cv.summary.length > 50) fortalezas += `El resumen sintetiza bien tu perfil.`;
+  else fortalezas += `Información completa en tus secciones principales.`;
+
+  let mejoras = `• **Cuantificá tus logros:** `;
+  if (!hasMetrics) mejoras += `Agregá porcentajes o métricas en la experiencia laboral (ej. "Aumenté la eficiencia un 15%").\n\n`;
+  else mejoras += `Asegurate de incluir al menos 1 resultado medible por puesto.\n\n`;
+
+  if (cv.summary.length < 40) {
+    mejoras += `• **Ampliá tu Perfil:** Redactá 2 o 3 oraciones que resuman tus competencias e industria.`;
+  } else {
+    mejoras += `• **Verbos directos:** Utilizá verbos de acción al inicio de cada logro (Lideré, Coordiné, Implementé).`;
+  }
+
+  return `### Puntos Fuertes\nHola ${name}, tu currículum cuenta con un diseño muy limpio y ordenado.\n\n### Oportunidades de Mejora\n${mejoras}\n\n### Recomendación Clave\nAdaptá los títulos de tus experiencias anteriores a la nomenclatura exacta de los puestos que buscás actualmente.`;
+}
+
+function generateFallbackBullet(text) {
+  const verbs = ["Lideré", "Optimicé", "Coordiné", "Implementé", "Desarrollé"];
+  const randomVerb = verbs[Math.floor(Math.random() * verbs.length)];
+  const clean = text.trim().replace(/^(yo|mi|me|se|encargado de|responsable de)\s+/i, "");
+  return `${randomVerb} ${clean.charAt(0).toLowerCase() + clean.slice(1)} alcanzando un alto estándar de eficiencia.`;
+}
+
 /* ---------- API IA ---------- */
 async function callClaude(prompt) {
   const API_KEY = import.meta.env?.VITE_ANTHROPIC_API_KEY || ""; 
@@ -112,7 +142,6 @@ async function callClaude(prompt) {
 
 /* ---------- APP PRINCIPAL ---------- */
 export default function App() {
-  const [activeAppModule, setActiveAppModule] = useState("cv"); // 'cv' | 'entrevista' | 'pitch' | 'tracker' | 'salario'
   const [showLanding, setShowLanding] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [cv, setCv] = useState(emptyCV());
@@ -133,33 +162,15 @@ export default function App() {
   const [atsAnalysis, setAtsAnalysis] = useState(null);
   const [loadingATS, setLoadingATS] = useState(false);
 
-  /* ESTADOS NUEVOS MÓDULOS */
-  const [interviewRole, setJobInterviewRole] = useState("");
-  const [interviewQuestion, setInterviewQuestion] = useState("");
-  const [userAnswer, setUserAnswer] = useState("");
-  const [starFeedback, setStarFeedback] = useState("");
-  const [loadingInterview, setLoadingInterview] = useState(false);
-
-  const [pitchType, setPitchType] = useState("cover"); // 'cover' | 'linkedin' | 'email'
-  const [pitchTone, setPitchTone] = useState("Corporativo");
-  const [pitchResult, setPitchResult] = useState("");
-  const [loadingPitch, setLoadingPitch] = useState(false);
-
-  const [trackerCards, setTrackerCards] = useState([
-    { id: "1", company: "Empresa Ejemplo", role: "Analista de Operaciones", status: "postulado", date: "Hoy", notes: "CV enviado por LinkedIn" }
-  ]);
-  const [newCompany, setNewCompany] = useState("");
-  const [newRole, setNewRole] = useState("");
-
-  const [targetRoleSalary, setTargetRoleSalary] = useState("");
-  const [salarySeniority, setSalarySeniority] = useState("Semi-Senior");
-  const [salaryResult, setSalaryResult] = useState("");
-  const [loadingSalary, setLoadingSalary] = useState(false);
+  /* ESTADOS IMPORTACIÓN DE CV */
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [rawCvText, setRawCvText] = useState("");
+  const [loadingImport, setLoadingImport] = useState(false);
 
   const saveTimer = useRef(null);
   const printRef = useRef(null);
 
-  useEffect(() => { document.title = "Ecosistema IMPULSO"; }, []);
+  useEffect(() => { document.title = "Impulso CV Premium"; }, []);
 
   useEffect(() => {
     try {
@@ -172,8 +183,7 @@ export default function App() {
         if (parsed.selectedFont) setSelectedFont(parsed.selectedFont);
         if (parsed.density) setDensity(parsed.density);
         if (parsed.darkMode !== undefined) setDarkMode(parsed.darkMode);
-        if (parsed.trackerCards) setTrackerCards(parsed.trackerCards);
-        if (parsed.visible) setVisible({ photo: true, summary: true, experience: true, education: true, skills: true, languages: true, tools: true, ...parsed.visible });
+        if (parsed.visible) setVisible({ photo: true, summary: true, experience: true, education: true, skills: true, languages: true, tools: true, ...parsed.visible, tools: parsed.visible.tools ?? true });
       }
     } catch (e) {}
     setLoaded(true);
@@ -182,16 +192,17 @@ export default function App() {
   useEffect(() => {
     if (!loaded) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ cv, templateId, palette, selectedFont, density, darkMode, visible, trackerCards })); } catch (e) {} }, 700);
+    saveTimer.current = setTimeout(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ cv, templateId, palette, selectedFont, density, darkMode, visible })); } catch (e) {} }, 700);
     return () => clearTimeout(saveTimer.current);
-  }, [cv, templateId, palette, selectedFont, density, darkMode, visible, trackerCards, loaded]);
+  }, [cv, templateId, palette, selectedFont, density, darkMode, visible, loaded]);
 
   const handleResetCV = () => {
-    if (window.confirm("¿Seguro que querés borrar todo el contenido del CV?")) {
+    if (window.confirm("¿Seguro que querés borrar todo el contenido y empezar un CV desde cero?")) {
       localStorage.removeItem(STORAGE_KEY);
       setCv(emptyCV());
       setAtsAnalysis(null);
       setJobDescription("");
+      setDensity("normal");
     }
   };
 
@@ -218,6 +229,7 @@ export default function App() {
   const updateLanguage = (id, field, value) => setCv((c) => ({ ...c, languages: c.languages.map((l) => (l.id === id ? { ...l, [field]: value } : l)) }));
   const addLanguage = () => setCv((c) => ({ ...c, languages: [...c.languages, emptyLanguage()] }));
 
+  /* SECCIONES PERSONALIZADAS */
   const addCustomSection = () => setCv(c => ({ ...c, customSections: [...(c.customSections || []), emptyCustomSection()] }));
   const removeCustomSection = (id) => setCv(c => ({ ...c, customSections: (c.customSections || []).filter(s => s.id !== id) }));
   const updateCustomSectionTitle = (id, title) => setCv(c => ({ ...c, customSections: (c.customSections || []).map(s => s.id === id ? { ...s, title } : s) }));
@@ -225,16 +237,70 @@ export default function App() {
   const updateCustomItem = (secId, idx, val) => setCv(c => ({ ...c, customSections: (c.customSections || []).map(s => s.id === secId ? { ...s, items: s.items.map((item, i) => i === idx ? val : item) } : s) }));
   const removeCustomItem = (secId, idx) => setCv(c => ({ ...c, customSections: (c.customSections || []).map(s => s.id === secId ? { ...s, items: s.items.filter((_, i) => i !== idx) } : s) }));
 
+  /* EXTRACCIÓN AUTOMÁTICA DE DATOS CON IA DESDE TEXTO COPIADO */
+  const handleExtractCvData = async () => {
+    if (!rawCvText.trim()) return;
+    setLoadingImport(true);
+    try {
+      const prompt = `Analizá el siguiente texto de un CV y extraé todos los datos estructurados.
+      Devolvé ÚNICAMENTE un JSON estricto con esta forma:
+      {
+        "personal": { "name": "", "title": "", "email": "", "phone": "", "location": "", "linkedin": "" },
+        "summary": "",
+        "experience": [{ "role": "", "company": "", "start": "", "end": "", "bullets": [""] }],
+        "education": [{ "degree": "", "institution": "", "start": "", "end": "" }],
+        "skills": [{ "name": "" }],
+        "tools": [{ "name": "" }],
+        "languages": [{ "name": "", "level": "" }]
+      }
+      Si algún campo no figura en el texto, dejalo como string vacío.
+      
+      Texto del CV a analizar: "${rawCvText.replace(/"/g, "'")}"`;
+
+      const responseText = await callClaude(prompt);
+      const parsed = JSON.parse(responseText);
+
+      setCv({
+        ...emptyCV(),
+        personal: { ...emptyCV().personal, ...(parsed.personal || {}) },
+        summary: parsed.summary || "",
+        experience: parsed.experience && parsed.experience.length ? parsed.experience.map(e => ({ id: uid(), role: e.role || "", company: e.company || "", start: e.start || "", end: e.end || "", bullets: e.bullets && e.bullets.length ? e.bullets : [""] })) : [emptyExperience()],
+        education: parsed.education && parsed.education.length ? parsed.education.map(ed => ({ id: uid(), degree: ed.degree || "", institution: ed.institution || "", start: ed.start || "", end: ed.end || "" })) : [emptyEducation()],
+        skills: parsed.skills && parsed.skills.length ? parsed.skills.map(s => ({ id: uid(), name: typeof s === 'string' ? s : s.name || "" })) : [emptySkill()],
+        tools: parsed.tools && parsed.tools.length ? parsed.tools.map(t => ({ id: uid(), name: typeof t === 'string' ? t : t.name || "" })) : [emptyTool()],
+        languages: parsed.languages && parsed.languages.length ? parsed.languages.map(l => ({ id: uid(), name: l.name || "", level: l.level || "" })) : [emptyLanguage()],
+        customSections: []
+      });
+
+      setIsImportModalOpen(false);
+      setRawCvText("");
+      setShowLanding(false);
+    } catch (e) {
+      alert("No pudimos estructurar automáticamente todos los datos. Podés ajustar los campos manualmente.");
+    }
+    setLoadingImport(false);
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => setRawCvText(event.target.result);
+    reader.readAsText(file);
+  };
+
   const analyzeEntireCV = async () => {
     setIsAiModalOpen(true);
     setAiFeedback("ANALYZING");
     try {
-      const cvText = `Nombre: ${cv.personal.name}\nPerfil: ${cv.summary}\nExperiencia: ${cv.experience.map(e => `${e.role} en ${e.company}. Logros: ${e.bullets.join('; ')}`).join(' | ')}\nEducación: ${cv.education.map(ed => ed.degree).join(', ')}\nHabilidades: ${cv.skills.map(s=>s.name).join(', ')}`;
-      const prompt = `Actuá como un Reclutador experto. Analizá este CV y devolvé tu feedback EXACTAMENTE con esta estructura (usá formato markdown):\n\n### Puntos Fuertes\n(1 aspecto positivo)\n\n### Oportunidades de Mejora\n(2 consejos prácticos)\n\n### Recomendación Clave\n(Un consejo profesional breve).\n\nCV: ${cvText}`;
+      const cvText = `Nombre: ${cv.personal.name}\nPerfil: ${cv.summary}\nExperiencia: ${cv.experience.map(e => `${e.role} en ${e.company}. Logros: ${e.bullets.join('; ')}`).join(' | ')}\nEducación: ${cv.education.map(ed => ed.degree).join(', ')}\nHabilidades: ${cv.skills.map(s=>s.name).join(', ')}\nHerramientas: ${cv.tools.map(t=>t.name).join(', ')}`;
+      const prompt = `Actuá como un Reclutador experto. Analizá este CV y devolvé tu feedback EXACTAMENTE con esta estructura (usá formato markdown):\n\n### Puntos Fuertes\n(1 aspecto positivo)\n\n### Oportunidades de Mejora\n(2 consejos prácticos sobre redacción o estructura)\n\n### Recomendación Clave\n(Un consejo profesional breve).\n\nSé directo. CV: ${cvText}`;
       const analysis = await callClaude(prompt);
       setAiFeedback(analysis);
     } catch (e) {
-      setTimeout(() => setAiFeedback(generateFallbackAnalysis(cv)), 600);
+      setTimeout(() => {
+        setAiFeedback(generateFallbackAnalysis(cv));
+      }, 600);
     }
   };
 
@@ -242,103 +308,91 @@ export default function App() {
     if (!jobDescription.trim()) return;
     setLoadingATS(true);
     try {
-      const cvFullText = `${cv.summary} ${cv.experience.map(e=> `${e.role} ${e.company} ${e.bullets.join(' ')}`).join(' ')} ${cv.skills.map(s=>s.name).join(' ')}`.toLowerCase();
-      const prompt = `Analizá la siguiente oferta laboral y extraé entre 5 y 8 PALABRAS CLAVE PROFESIONALES RELEVANTES (habilidades técnicas, herramientas o metodologías). Ignorá palabras de relleno o ciudades. Devolvé ÚNICAMENTE JSON estricto: {"keywords": ["palabra1", "palabra2"]}\n\nOferta Laboral: "${jobDescription}"`;
+      const cvFullText = `${cv.summary} ${cv.experience.map(e=> `${e.role} ${e.company} ${e.bullets.join(' ')}`).join(' ')} ${cv.skills.map(s=>s.name).join(' ')} ${cv.tools.map(t=>t.name).join(' ')}`.toLowerCase();
+      
+      const prompt = `Analizá la siguiente oferta laboral y extraé entre 5 y 8 PALABRAS CLAVE PROFESIONALES RELEVANTES (habilidades técnicas, conocimientos del sector, herramientas o metodologías).
+      REGLAS STRICTAS:
+      - IGNORÁ palabras de relleno, nombres de países o ciudades (ej. "Argentina"), verbos genéricos ("buscamos", "encontramos", "expandiendo", "ofrecer", "desafío") e historia corporativa.
+      - Solo extraé términos de valor profesional para un filtro ATS (ej. "Logística", "Gestión de inventarios", "SAP", "Excel", "Inglés", "Liderazgo").
+      Devolvé ÚNICAMENTE un formato JSON estricto: {"keywords": ["palabra1", "palabra2"]}\n\nOferta Laboral: "${jobDescription}"`;
+      
       const responseText = await callClaude(prompt);
       const parsed = JSON.parse(responseText);
       const extractedKeywords = parsed.keywords || [];
 
       const matched = [];
       const missing = [];
+
       extractedKeywords.forEach(word => {
-        if (cvFullText.includes(word.toLowerCase())) matched.push(word);
-        else missing.push(word);
+        if (cvFullText.includes(word.toLowerCase())) {
+          matched.push(word);
+        } else {
+          missing.push(word);
+        }
       });
+
       const score = Math.round((matched.length / (extractedKeywords.length || 1)) * 100);
       setAtsAnalysis({ matched, missing, score });
     } catch (e) {
-      setAtsAnalysis({ matched: ["Logística", "Excel"], missing: ["Gestión de inventarios", "SAP", "KPIs"], score: 40 });
+      const stopWords = ["desde", "como", "con", "sobre", "este", "esta", "para", "entre", "donde", "argentina", "encontramos", "expandiendose", "continua", "frente", "nuevo", "desafio", "soluciones", "calidad", "conocimiento", "experiencia", "mercado", "ofrecer", "global", "presencia", "solida", "hemos", "consolidado"];
+      const words = jobDescription.toLowerCase().match(/\b[a-záéíóúñ]{4,}\b/g) || [];
+      const cvFullText = `${cv.summary} ${cv.experience.map(e=> `${e.role} ${e.bullets.join(' ')}`).join(' ')} ${cv.skills.map(s=>s.name).join(' ')} ${cv.tools.map(t=>t.name).join(' ')}`.toLowerCase();
+      const uniqueWords = Array.from(new Set(words)).filter(w => !stopWords.includes(w)).slice(0, 6);
+      
+      const matched = uniqueWords.filter(w => cvFullText.includes(w));
+      const missing = uniqueWords.filter(w => !cvFullText.includes(w));
+      const score = Math.round((matched.length / (uniqueWords.length || 1)) * 100);
+      setAtsAnalysis({ matched, missing, score });
     }
     setLoadingATS(false);
   };
 
-  /* IA MÓDULO ENTREVISTAS */
-  const generateInterviewQuestion = async () => {
-    setLoadingInterview(true);
-    setStarFeedback("");
+  const improveBulletAI = async (expId, idx, text) => {
+    if (!text.trim()) return;
+    setLoadingAI(`${expId}-${idx}`);
     try {
-      const prompt = `Actuá como un reclutador. Generá 1 pregunta técnica o por competencias muy probable para el puesto "${interviewRole || cv.personal.title || 'Profesional'}". Devolvé ÚNICAMENTE la pregunta.`;
-      const q = await callClaude(prompt);
-      setInterviewQuestion(q);
+      const prompt = `Reescribí esta frase para un CV profesional usando lenguaje de impacto y apto para filtros ATS. Devolvé ÚNICAMENTE la frase mejorada, sin explicaciones. Frase: "${text}"`;
+      const improved = await callClaude(prompt);
+      updateBullet(expId, idx, improved);
     } catch (e) {
-      setInterviewQuestion(`Contame sobre alguna situación desafiante que hayas liderado en tu experiencia laboral y cómo la resolviste.`);
+      updateBullet(expId, idx, generateFallbackBullet(text));
     }
-    setLoadingInterview(false);
+    setLoadingAI(null);
   };
 
-  const evaluateStarAnswer = async () => {
-    if (!userAnswer.trim()) return;
-    setLoadingInterview(true);
-    try {
-      const prompt = `Actuá como Reclutador. Evaluar la respuesta del candidato a la pregunta "${interviewQuestion}".\nRespuesta del candidato: "${userAnswer}".\nEstructurá tu feedback usando el método STAR:\n- Situación/Tarea: ¿Quedó clara?\n- Acción: ¿Explicó lo que HIZO?\n- Resultado: ¿Incluyó métricas o logros?\n- Consejo de Mejora: 1 tip breve.`;
-      const res = await callClaude(prompt);
-      setStarFeedback(res);
-    } catch (e) {
-      setStarFeedback(`### Evaluación STAR\n• **Punto Fuerte:** Explicás de forma directa la situación de trabajo.\n• **Oportunidad de Mejora:** Sumá un indicador cuantitativo (ej. porcentajes o tiempos ahorrados) en el resultado final para causar mayor impacto.`);
+  const handlePhotoUpload = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => updatePersonal("photo", reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleDownloadPdf = () => {
+    setDownloading(true);
+    const element = printRef.current;
+    if (!element) return;
+
+    const opt = {
+      margin: [0.35, 0, 0.35, 0],
+      filename: (cv.personal.name ? cv.personal.name.trim().replace(/\s+/g, "_") : "Mi_CV") + ".pdf",
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] }
+    };
+
+    if (window.html2pdf) {
+      window.html2pdf().set(opt).from(element).save().then(() => setDownloading(false)).catch(() => setDownloading(false));
+    } else {
+      window.print();
+      setDownloading(false);
     }
-    setLoadingInterview(false);
   };
-
-  /* IA MÓDULO PITCH */
-  const generatePitchContent = async () => {
-    setLoadingPitch(true);
-    try {
-      const prompt = `Actuá como experto en empleabilidad. Generá un texto tipo "${pitchType === 'cover' ? 'Carta de Presentación' : pitchType === 'linkedin' ? 'Extracto Sobre Mí para LinkedIn' : 'Mensaje directo para Reclutador en LinkedIn'}" con un tono ${pitchTone}.\nCandidato: ${cv.personal.name || 'Profesional'}, Titular: ${cv.personal.title || 'Especialista'}. Experiencia: ${cv.summary}.\nDevolvé ÚNICAMENTE el texto redactado y listo para copiar.`;
-      const res = await callClaude(prompt);
-      setPitchResult(res);
-    } catch (e) {
-      setPitchResult(`Estimado/a Reclutador/a,\n\nMe pongo en contacto para expresar mi interés en integrarme a su equipo. Cuento con experiencia en ${cv.personal.title || 'mi área de especialidad'} destacándome por mi orientación a resultados y trabajo en equipo.\n\nQuedo a disposición para conversar sobre cómo aportar valor a sus proyectos.\n\nSaludos cordiales,\n${cv.personal.name || 'Profesional'}`);
-    }
-    setLoadingPitch(false);
-  };
-
-  /* ACCIONES TRACKER KANBAN */
-  const addTrackerCard = () => {
-    if (!newCompany.trim() || !newRole.trim()) return;
-    setTrackerCards(c => [...c, { id: uid(), company: newCompany, role: newRole, status: "postulado", date: "Hoy", notes: "" }]);
-    setNewCompany("");
-    setNewRole("");
-  };
-
-  const moveTrackerCard = (id, newStatus) => {
-    setTrackerCards(c => c.map(card => card.id === id ? { ...card, status: newStatus } : card));
-  };
-
-  const removeTrackerCard = (id) => {
-    setTrackerCards(c => c.filter(card => card.id !== id));
-  };
-
-  /* IA MÓDULO SALARIO */
-  const generateSalaryGuidance = async () => {
-    if (!targetRoleSalary.trim()) return;
-    setLoadingSalary(true);
-    try {
-      const prompt = `Actuá como consultor en compensaciones. Brindá un rango salarial aproximado estimado y un guion breve para responder a "¿Cuáles son tus pretensiones salariales?" para el puesto "${targetRoleSalary}" nivel ${salarySeniority}.\nDevolvé en formato Markdown estructurado.`;
-      const res = await callClaude(prompt);
-      setSalaryResult(res);
-    } catch (e) {
-      setSalaryResult(`### Rango Salarial Estimado\nPara el puesto de **${targetRoleSalary} (${salarySeniority})**, los rangos promedio de mercado oscilan según la industria.\n\n### Guion para la Entrevista\n*"Mis pretensiones salariales se alinean con los rangos de mercado para un perfil ${salarySeniority} con mi experiencia. Actualmente contemplo un salario neto entre [Monto X] e [Monto Y], conversable según el paquete de beneficios totales que ofrezca la empresa."*`);
-    }
-    setLoadingSalary(false);
-  };
-
-  const handlePhotoUpload = (file) => { if (!file) return; const reader = new FileReader(); reader.onload = () => updatePersonal("photo", reader.result); reader.readAsDataURL(file); };
-  const handleDownloadPdf = () => { setDownloading(true); const element = printRef.current; if (!element) return; const opt = { margin: [0.35, 0, 0.35, 0], filename: (cv.personal.name ? cv.personal.name.trim().replace(/\s+/g, "_") : "Mi_CV") + ".pdf", image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } }; if (window.html2pdf) { window.html2pdf().set(opt).from(element).save().then(() => setDownloading(false)).catch(() => setDownloading(false)); } else { window.print(); setDownloading(false); } };
 
   const currentFontFamily = FONTS.find(f => f.id === selectedFont)?.family || "'Nunito', sans-serif";
   const completeness = calculateCompleteness(cv);
 
-  /* ESTILOS MODO OSCURO */
+  /* ESTILOS DINÁMICOS MODO OSCURO */
   const uiBg = darkMode ? "#181818" : "#F4F5F4";
   const headerBg = darkMode ? "#222222" : "#E8E2D5";
   const headerBorder = darkMode ? "#333333" : "#D8D0C0";
@@ -357,70 +411,89 @@ export default function App() {
           * { box-sizing: border-box; }
           .landing-btn-main { background: ${palette.primary}; color: #fff; padding: 16px 36px; border-radius: 30px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.12); }
           .landing-btn-main:hover { opacity: 0.92; transform: translateY(-2px); }
-          .landing-card { background: #fff; border: 1px solid #E2E4E2; border-radius: 16px; padding: 24px; flex: 1; min-width: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+          .landing-card { background: #fff; border: 1px solid #E2E4E2; border-radius: 16px; padding: 24px; flex: 1; min-width: 240px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
         `}</style>
         
         <div style={{ padding: "20px 32px", background: "#E8E2D5", borderBottom: "1px solid #D8D0C0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "#2B2B2B" }}>
-            Ecosistema IMPULSO <span style={{ color: palette.primary, background: "#FFF", padding: "2px 8px", borderRadius: 10, fontSize: 10, verticalAlign: "middle", marginLeft: 6, fontWeight: 600 }}>SUITE</span>
+            Impulso CV <span style={{ color: palette.primary, background: "#FFF", padding: "2px 8px", borderRadius: 10, fontSize: 10, verticalAlign: "middle", marginLeft: 6, fontWeight: 600 }}>PREMIUM</span>
           </h1>
-          <button onClick={() => setShowLanding(false)} style={{ background: palette.primary, color: "#fff", border: "none", padding: "8px 18px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            Ingresar a la Plataforma
-          </button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => { setIsImportModalOpen(true); setShowLanding(false); }} style={{ background: "#FFF", color: "#333", border: "1px solid #CFC7B8", padding: "8px 16px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              📥 Importar CV Existente
+            </button>
+            <button onClick={() => setShowLanding(false)} style={{ background: palette.primary, color: "#fff", border: "none", padding: "8px 18px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              Crear desde cero
+            </button>
+          </div>
         </div>
 
         <div style={{ maxWidth: 900, margin: "0 auto", padding: "60px 24px 40px", textAlign: "center" }}>
           <span style={{ background: "#E8E2D5", color: "#555", padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-            🚀 PLATAFORMA INTEGRAL DE EMPLEABILIDAD
+            ✨ GENERADOR INTELIGENTE DE CURRÍCULUM
           </span>
           <h2 style={{ fontSize: "clamp(28px, 5vw, 44px)", fontWeight: 800, color: "#222", margin: "20px 0 16px", lineHeight: 1.25 }}>
-            Acompañamos cada etapa de tu búsqueda laboral con IA.
+            Destacá en tus postulaciones con un CV profesional y optimizado.
           </h2>
           <p style={{ fontSize: 16, color: "#666", lineHeight: 1.6, maxWidth: 720, margin: "0 auto 10px" }}>
-            Impulso reúne en un solo lugar todas las herramientas para destacar: creador de CV profesional, ensayos de entrevistas, redacción de cartas, seguimiento Kanban y orientación salarial.
+            Impulso CV combina plantillas profesionales, importación automática de currículums existentes por IA, cazador de palabras clave ATS y evaluación en tiempo real para potenciar tu perfil laboral.
+          </p>
+          <p style={{ fontSize: 13.5, color: "#888", margin: "0 auto 32px", fontWeight: 500 }}>
+            Un servicio gratuito diseñado para impulsar tu carrera.
           </p>
 
-          <button className="landing-btn-main" onClick={() => setShowLanding(false)} style={{ marginTop: 24 }}>
-            Probar Suite Completa →
-          </button>
+          <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+            <button className="landing-btn-main" onClick={() => setShowLanding(false)}>
+              Crear un CV nuevo →
+            </button>
+            <button className="landing-btn-main" onClick={() => { setIsImportModalOpen(true); setShowLanding(false); }} style={{ background: "#FFF", color: palette.primary, border: `1px solid ${palette.primary}` }}>
+              📥 Cargar un CV existente
+            </button>
+          </div>
         </div>
 
-        <div style={{ maxWidth: 1050, margin: "0 auto 60px", padding: "0 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+        <div style={{ maxWidth: 1050, margin: "0 auto 60px", padding: "0 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
           <div className="landing-card">
-            <div style={{ fontSize: 24, marginBottom: 8 }}>📄</div>
-            <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 6px" }}>Impulso CV</h3>
-            <p style={{ fontSize: 12.5, color: "#666", lineHeight: 1.4, margin: 0 }}>Diseño profesional, ATS y análisis por IA.</p>
+            <div style={{ fontSize: 28, marginBottom: 12 }}>📥</div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Importador por IA</h3>
+            <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
+              Pegá el texto de tu CV actual y la IA extraerá tus datos automáticamente para que no tengas que escribir de nuevo.
+            </p>
           </div>
+
           <div className="landing-card">
-            <div style={{ fontSize: 24, marginBottom: 8 }}>🎙️</div>
-            <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 6px" }}>Impulso Entrevista</h3>
-            <p style={{ fontSize: 12.5, color: "#666", lineHeight: 1.4, margin: 0 }}>Simulador IA con devoluciones por formato STAR.</p>
+            <div style={{ fontSize: 28, marginBottom: 12 }}>🎯</div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Cazador ATS</h3>
+            <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
+              Pegá el texto de cualquier oferta de empleo y detectá al instante qué palabras clave técnicas le faltan a tu CV.
+            </p>
           </div>
+
           <div className="landing-card">
-            <div style={{ fontSize: 24, marginBottom: 8 }}>✍️</div>
-            <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 8px" }}>Impulso Pitch</h3>
-            <p style={{ fontSize: 12.5, color: "#666", lineHeight: 1.4, margin: 0 }}>Cartas de presentación y mensajes de LinkedIn.</p>
+            <div style={{ fontSize: 28, marginBottom: 12 }}>📊</div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Medidor de Calidad</h3>
+            <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
+              Barra de completitud en tiempo real para asegurarte de incluir todos los elementos exigidos por reclutadores.
+            </p>
           </div>
+
           <div className="landing-card">
-            <div style={{ fontSize: 24, marginBottom: 8 }}>📊</div>
-            <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 6px" }}>Impulso Tracker</h3>
-            <p style={{ fontSize: 12.5, color: "#666", lineHeight: 1.4, margin: 0 }}>Tablero Kanban para organizar postulaciones.</p>
-          </div>
-          <div className="landing-card">
-            <div style={{ fontSize: 24, marginBottom: 8 }}>💰</div>
-            <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 6px" }}>Impulso Salario</h3>
-            <p style={{ fontSize: 12.5, color: "#666", lineHeight: 1.4, margin: 0 }}>Estimaciones y guiones de negociación.</p>
+            <div style={{ fontSize: 28, marginBottom: 12 }}>🤖</div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", color: "#222" }}>Revisión Inteligente</h3>
+            <p style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5, margin: 0 }}>
+              Optimización individual de frases y devolución completa del perfil realizada por un Reclutador Virtual.
+            </p>
           </div>
         </div>
 
         <div style={{ marginTop: "auto", padding: "20px", textAlign: "center", borderTop: "1px solid #E2E4E2", fontSize: 13, color: "#777" }}>
-          Ecosistema IMPULSO • Suite Profesional de Carrera
+          Impulso CV Premium • Servicio Gratuito para Generación Profesional de Currículum
         </div>
       </div>
     );
   }
 
-  /* ---------- BUILDER / EDITOR CON BARRA DE SUITE ---------- */
+  /* ---------- BUILDER / EDITOR ---------- */
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", background: uiBg, minHeight: "100vh", position: "relative", color: textColor, transition: "background 0.3s, color 0.3s" }}>
       <style>{`
@@ -434,8 +507,30 @@ export default function App() {
         
         .print-area-wrapper { position: relative; }
         .print-area { width: 794px; min-height: 1123px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin: 0 auto; }
-        .page-break-indicator { position: absolute; top: 1123px; left: -10px; right: -10px; border-top: 2px dashed #E53935; pointer-events: none; z-index: 10; }
-        .page-break-indicator::after { content: "── FIN PÁGINA 1 (A4) ──"; position: absolute; right: 20px; top: -9px; background: #E53935; color: white; font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 4px; }
+        
+        /* LÍNEA GUÍA DE CORTE DE HOJA A4 */
+        .page-break-indicator {
+          position: absolute;
+          top: 1123px;
+          left: -10px;
+          right: -10px;
+          border-top: 2px dashed #E53935;
+          pointer-events: none;
+          z-index: 10;
+        }
+        .page-break-indicator::after {
+          content: "── FIN PÁGINA 1 (A4) ──";
+          position: absolute;
+          right: 20px;
+          top: -9px;
+          background: #E53935;
+          color: white;
+          font-size: 9px;
+          font-weight: 800;
+          padding: 2px 8px;
+          border-radius: 4px;
+          letter-spacing: 0.5px;
+        }
 
         .page-block { break-inside: avoid !important; page-break-inside: avoid !important; padding-top: 14px; margin-top: 6px; }
         .page-header-avoid { break-after: avoid !important; page-break-after: avoid !important; }
@@ -448,16 +543,19 @@ export default function App() {
         .arrow-btn:hover { background: ${darkMode ? '#444' : '#D5D7D3'}; }
         
         .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
-        .modal-content { background: ${cardBg}; border: 1px solid ${cardBorder}; padding: 32px; border-radius: 16px; width: 90%; maxWidth: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .modal-content { background: ${cardBg}; border: 1px solid ${cardBorder}; padding: 32px; border-radius: 16px; width: 90%; maxWidth: 520px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
         .ai-text h3 { color: ${palette.primary}; font-size: 15px; margin: 16px 0 8px; border-bottom: 1px solid ${palette.accent}; padding-bottom: 4px; font-weight:600; }
         .ai-text p { font-size: 14px; line-height: 1.6; color: ${textColor}; margin: 0 0 12px; }
 
-        .suite-tab-btn { background: transparent; border: none; padding: 10px 16px; font-size: 13px; font-weight: 600; cursor: pointer; color: ${textColor}; border-bottom: 2px solid transparent; transition: all 0.2s; }
-        .suite-tab-btn.active { color: ${palette.primary}; border-bottom: 2px solid ${palette.primary}; }
-
+        /* RESPONSIVE & VISTA PREVIA FIJA EN WEB */
         @media (min-width: 769px) {
           .mobile-tabs { display: none !important; }
-          .panel-right-mobile { position: sticky !important; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto !important; }
+          .panel-right-mobile {
+            position: sticky !important;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto !important;
+          }
         }
 
         @media (max-width: 768px) {
@@ -474,167 +572,193 @@ export default function App() {
         }
       `}</style>
 
-      {/* HEADER PRINCIPAL */}
-      <div className="cvb-header-nav" style={{ padding: "16px 32px 0", background: headerBg, borderBottom: `1px solid ${headerBorder}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginBottom: 12 }}>
+      {/* HEADER DE LA APP */}
+      <div className="cvb-header-nav" style={{ padding: "18px 32px", background: headerBg, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${headerBorder}` }}>
+        <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: headingColor, letterSpacing: "-0.5px", display: "flex", alignItems: "center" }}>
-            Ecosistema IMPULSO
+            Impulso CV <span style={{ color: palette.primary, background: cardBg, padding: "2px 8px", borderRadius: 10, fontSize: 10, verticalAlign: "middle", marginLeft: 8, border: `1px solid ${palette.secondary}40`, fontWeight: 600 }}>PREMIUM</span>
           </h1>
-          <div className="cvb-header-actions" style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <button className="cvb-btn" onClick={() => setDarkMode(!darkMode)} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor }}>
-              {darkMode ? <IconSun color="#FFD700" /> : <IconMoon color="#555" />} {darkMode ? "Claro" : "Oscuro"}
-            </button>
-            <button className="cvb-btn" onClick={() => setShowLanding(true)} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor }}>
-              ℹ️ Guía
-            </button>
-          </div>
         </div>
-
-        {/* BARRA DE NAVEGACIÓN MÓDULOS SUITE */}
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", width: "100%" }}>
-          <button className={`suite-tab-btn ${activeAppModule === 'cv' ? 'active' : ''}`} onClick={() => setActiveAppModule('cv')}>
-            📄 Impulso CV
+        <div className="cvb-header-actions" style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button className="cvb-btn" onClick={() => setIsImportModalOpen(true)} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor }}>
+            <IconUpload color={textColor} /> Importar CV
           </button>
-          <button className={`suite-tab-btn ${activeAppModule === 'entrevista' ? 'active' : ''}`} onClick={() => setActiveAppModule('entrevista')}>
-            🎙️ Entrevistas IA
+          <button className="cvb-btn" onClick={() => setDarkMode(!darkMode)} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor }}>
+            {darkMode ? <IconSun color="#FFD700" /> : <IconMoon color="#555" />} {darkMode ? "Claro" : "Oscuro"}
           </button>
-          <button className={`suite-tab-btn ${activeAppModule === 'pitch' ? 'active' : ''}`} onClick={() => setActiveAppModule('pitch')}>
-            ✍️ Cartas & Pitch
+          <button className="cvb-btn" onClick={() => setShowLanding(true)} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor }}>
+            ℹ️ Guía
           </button>
-          <button className={`suite-tab-btn ${activeAppModule === 'tracker' ? 'active' : ''}`} onClick={() => setActiveAppModule('tracker')}>
-            📊 Tracker Kanban
+          <button className="cvb-btn" onClick={handleResetCV} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor }} title="Limpiar todos los campos">
+            <IconTrash color={textColor} /> Borrar
           </button>
-          <button className={`suite-tab-btn ${activeAppModule === 'salario' ? 'active' : ''}`} onClick={() => setActiveAppModule('salario')}>
-            💰 Pretensión Salarial
+          <button className="cvb-btn" onClick={analyzeEntireCV} style={{ padding: "8px 14px", fontSize: 12, background: cardBg, border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <IconSparkles color={palette.primary} /> Revisar IA
+          </button>
+          <button className="cvb-btn" onClick={handleDownloadPdf} disabled={downloading} style={{ padding: "8px 18px", fontSize: 12, background: palette.primary, color: "#fff", opacity: downloading ? 0.6 : 1 }}>
+            ⬇ Descargar PDF
           </button>
         </div>
       </div>
 
-      {/* MODULO 1: IMPULSO CV */}
-      {activeAppModule === 'cv' && (
-        <div className="cvb-main-layout" style={{ display: "flex", flexWrap: "wrap", gap: 24, padding: 32, alignItems: "flex-start" }}>
+      <div className="cvb-main-layout" style={{ display: "flex", flexWrap: "wrap", gap: 24, padding: 32, alignItems: "flex-start" }}>
+        
+        {/* TABS SELECTOR PARA CELULARES */}
+        <div className="mobile-tabs">
+          <button className={`mobile-tab-btn ${activeTabMobile === 'editor' ? 'active' : ''}`} onClick={() => setActiveTabMobile('editor')}>
+            ✏️ Editar Datos
+          </button>
+          <button className={`mobile-tab-btn ${activeTabMobile === 'preview' ? 'active' : ''}`} onClick={() => setActiveTabMobile('preview')}>
+            👁️ Vista Previa
+          </button>
+        </div>
+
+        {/* PANEL IZQUIERDO */}
+        <div className="panel-left-mobile" style={{ flex: "1 1 400px", minWidth: 320, maxWidth: 480 }}>
           
-          <div className="mobile-tabs">
-            <button className={`mobile-tab-btn ${activeTabMobile === 'editor' ? 'active' : ''}`} onClick={() => setActiveTabMobile('editor')}>✏️ Editar Datos</button>
-            <button className={`mobile-tab-btn ${activeTabMobile === 'preview' ? 'active' : ''}`} onClick={() => setActiveTabMobile('preview')}>👁️ Vista Previa</button>
+          {/* MEDIDOR DE COMPLETITUD */}
+          <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 18, marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                📊 Completitud del CV
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: palette.primary }}>
+                {completeness}%
+              </span>
+            </div>
+            <div style={{ width: "100%", height: 8, background: darkMode ? "#333" : "#E2E4E2", borderRadius: 4, overflow: "hidden" }}>
+              <div style={{ width: `${completeness}%`, height: "100%", background: palette.primary, transition: "width 0.4s ease" }} />
+            </div>
+            <p style={{ fontSize: 11, color: darkMode ? "#888" : "#777", margin: "8px 0 0" }}>
+              {completeness < 50 ? "Agregá más secciones para enriquecer tu perfil." : completeness < 85 ? "¡Vas muy bien! Sumá tus logros o métricas clave." : "¡Excelente nivel de detalle!"}
+            </p>
           </div>
 
-          {/* PANEL IZQUIERDO */}
-          <div className="panel-left-mobile" style={{ flex: "1 1 400px", minWidth: 320, maxWidth: 480 }}>
+          {/* CAZADOR DE PALABRAS CLAVE ATS */}
+          <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 20, marginBottom: 20 }}>
+            <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 6px", color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px", display: "flex", alignItems: "center" }}>
+              <IconTarget color={palette.primary} /> 🎯 Cazador de Palabras ATS
+            </h3>
+            <p style={{ fontSize: 11.5, color: darkMode ? "#999" : "#666", margin: "0 0 12px" }}>
+              Pegá el texto del aviso de empleo para verificar qué términos clave te faltan incluir.
+            </p>
             
-            {/* COMPLETITUD Y ACCIONES DE CV */}
-            <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 18, marginBottom: 20 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: headingColor, textTransform: "uppercase" }}>📊 Completitud del CV</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: palette.primary }}>{completeness}%</span>
-              </div>
-              <div style={{ width: "100%", height: 8, background: darkMode ? "#333" : "#E2E4E2", borderRadius: 4, overflow: "hidden", marginBottom: 12 }}>
-                <div style={{ width: `${completeness}%`, height: "100%", background: palette.primary, transition: "width 0.4s ease" }} />
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button className="cvb-btn" onClick={analyzeEntireCV} style={{ flex: 1, padding: "8px", fontSize: 12, background: cardBg, border: `1px solid ${cardBorder}`, color: textColor }}>
-                  <IconSparkles color={palette.primary} /> Revisar IA
-                </button>
-                <button className="cvb-btn" onClick={handleDownloadPdf} disabled={downloading} style={{ flex: 1, padding: "8px", fontSize: 12, background: palette.primary, color: "#fff" }}>
-                  ⬇ Descargar PDF
-                </button>
-                <button className="cvb-btn" onClick={handleResetCV} style={{ padding: "8px 10px", fontSize: 12, background: "transparent", border: `1px solid ${cardBorder}`, color: textColor }} title="Limpiar">
-                  <IconTrash color={textColor} />
-                </button>
-              </div>
-            </div>
+            <textarea 
+              className="cvb-input" 
+              rows={3} 
+              value={jobDescription} 
+              onChange={(e) => setJobDescription(e.target.value)} 
+              placeholder="Pegá aquí el texto de la oferta de trabajo..." 
+              style={{ marginBottom: 10 }}
+            />
+            
+            <button className="cvb-btn" onClick={analyzeJobKeywords} disabled={loadingATS || !jobDescription.trim()} style={{ width: "100%", padding: "8px", fontSize: 12, background: palette.surface, color: palette.primary, border: `1px solid ${palette.accent}` }}>
+              {loadingATS ? "Analizando palabras..." : "Buscar Coincidencias"}
+            </button>
 
-            {/* CAZADOR DE PALABRAS CLAVE ATS */}
-            <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 20, marginBottom: 20 }}>
-              <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 6px", color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px", display: "flex", alignItems: "center" }}>
-                <IconTarget color={palette.primary} /> 🎯 Cazador de Palabras ATS
-              </h3>
-              <p style={{ fontSize: 11.5, color: darkMode ? "#999" : "#666", margin: "0 0 12px" }}>
-                Pegá el texto del aviso de empleo para verificar qué términos clave te faltan incluir.
-              </p>
-              
-              <textarea className="cvb-input" rows={3} value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} placeholder="Pegá aquí la oferta de trabajo..." style={{ marginBottom: 10 }} />
-              <button className="cvb-btn" onClick={analyzeJobKeywords} disabled={loadingATS || !jobDescription.trim()} style={{ width: "100%", padding: "8px", fontSize: 12, background: palette.surface, color: palette.primary, border: `1px solid ${palette.accent}` }}>
-                {loadingATS ? "Analizando palabras..." : "Buscar Coincidencias"}
-              </button>
-
-              {atsAnalysis && (
-                <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${cardBorder}` }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 600 }}>Coincidencia con la oferta:</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: atsAnalysis.score > 60 ? "#4CAF50" : "#E53935" }}>{atsAnalysis.score}%</span>
-                  </div>
-
-                  {atsAnalysis.missing.length > 0 && (
-                    <div style={{ marginBottom: 8 }}>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, color: "#E53935", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Te faltan agregar:</span>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                        {atsAnalysis.missing.map((w, i) => <span key={i} style={{ background: darkMode ? "#3A1E1E" : "#FDEAE8", color: "#C45B52", fontSize: 11, padding: "2px 6px", borderRadius: 4 }}>+ {w}</span>)}
-                      </div>
-                    </div>
-                  )}
-
-                  {atsAnalysis.matched.length > 0 && (
-                    <div>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, color: "#4CAF50", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Ya incluidas en tu CV:</span>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                        {atsAnalysis.matched.map((w, i) => <span key={i} style={{ background: darkMode ? "#1E3A1E" : "#E8F5E9", color: "#2E7D32", fontSize: 11, padding: "2px 6px", borderRadius: 4 }}>✓ {w}</span>)}
-                      </div>
-                    </div>
-                  )}
+            {atsAnalysis && (
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${cardBorder}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 600 }}>Coincidencia con la oferta:</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: atsAnalysis.score > 60 ? "#4CAF50" : "#E53935" }}>{atsAnalysis.score}%</span>
                 </div>
-              )}
-            </div>
 
-            {/* ESTILO Y COLOR */}
-            <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 20 }}>
-              <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 4px", color: headingColor, textTransform: "uppercase" }}>1. ESTILO</h3>
-              <p style={{ fontSize: 11.5, color: darkMode ? "#999" : "#777", margin: "0 0 12px" }}>Ajustá la paleta de color, tipografía y la distribución de la hoja.</p>
-              
-              <label className="cvb-label">Paletas Armónicas</label>
-              <div style={{ display: "flex", gap: 10, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
-                {PRESET_PALETTES.map(p => (
-                  <div key={p.id} onClick={() => setPalette(p)} className="color-swatch" style={{ background: p.primary, border: palette.id === p.id ? `3px solid ${headingColor}` : "2px solid transparent" }} title={p.name} />
-                ))}
-              </div>
-
-              <div style={{ marginBottom: 20, background: darkMode ? "#2D2D2D" : "#F9FAF8", border: `1px solid ${cardBorder}`, borderRadius: 10, padding: 12 }}>
-                <label className="cvb-label" style={{ marginBottom: 6 }}>Selector de Color Libre</label>
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <input type="color" value={palette.primary.length === 7 ? palette.primary : "#9C4235"} onChange={(e) => setPalette(generateCustomPalette(e.target.value))} style={{ width: 42, height: 36, border: `1px solid ${cardBorder}`, borderRadius: 6, cursor: "pointer", padding: 2, background: cardBg }} />
-                  <input className="cvb-input" style={{ flex: 1, textTransform: "uppercase", fontWeight: 600, fontSize: 12 }} value={palette.primary} onChange={(e) => setPalette(generateCustomPalette(e.target.value))} placeholder="#000000" />
-                </div>
-              </div>
-
-              <label className="cvb-label">Tono de Fuente</label>
-              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                {FONTS.map(f => (
-                  <button key={f.id} onClick={() => setSelectedFont(f.id)} style={{ flex: 1, padding: "8px", fontSize: 12, borderRadius: 6, border: selectedFont === f.id ? `1px solid ${palette.primary}` : `1px solid ${cardBorder}`, background: selectedFont === f.id ? palette.surface : cardBg, color: selectedFont === f.id ? palette.primary : textColor, fontWeight: selectedFont === f.id ? 600 : 400, fontFamily: f.family }}>{f.name}</button>
-                ))}
-              </div>
-
-              <label className="cvb-label">Densidad / Espaciado</label>
-              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                {DENSITIES.map(d => (
-                  <button key={d.id} onClick={() => setDensity(d.id)} style={{ flex: 1, padding: "8px", fontSize: 12, borderRadius: 6, border: density === d.id ? `1px solid ${palette.primary}` : `1px solid ${cardBorder}`, background: density === d.id ? palette.surface : cardBg, color: density === d.id ? palette.primary : textColor, fontWeight: density === d.id ? 600 : 400 }}>{d.name}</button>
-                ))}
-              </div>
-
-              <label className="cvb-label">Diseño de Hoja</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-                {TEMPLATES.map((t) => (
-                  <div key={t.id} onClick={() => setTemplateId(t.id)} style={{ padding: "12px 14px", borderRadius: 8, background: templateId === t.id ? palette.surface : cardBg, border: templateId === t.id ? `1px solid ${palette.primary}` : `1px solid ${cardBorder}`, cursor: "pointer" }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: templateId === t.id ? palette.primary : headingColor }}>{t.name}</span>
-                    <p style={{ fontSize: 11, margin: "4px 0 0", color: darkMode ? "#999" : "#777" }}>{t.blurb}</p>
+                {atsAnalysis.missing.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: "#E53935", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Te faltan agregar:</span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {atsAnalysis.missing.map((w, i) => (
+                        <span key={i} style={{ background: darkMode ? "#3A1E1E" : "#FDEAE8", color: "#C45B52", fontSize: 11, padding: "2px 6px", borderRadius: 4 }}>+ {w}</span>
+                      ))}
+                    </div>
                   </div>
-                ))}
+                )}
+
+                {atsAnalysis.matched.length > 0 && (
+                  <div>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: "#4CAF50", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Ya incluidas en tu CV:</span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {atsAnalysis.matched.map((w, i) => (
+                        <span key={i} style={{ background: darkMode ? "#1E3A1E" : "#E8F5E9", color: "#2E7D32", fontSize: 11, padding: "2px 6px", borderRadius: 4 }}>✓ {w}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ESTILO Y COLOR */}
+          <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 20 }}>
+            <div style={{ marginBottom: 12 }}>
+              <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 4px", color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>1. ESTILO</h3>
+              <p style={{ fontSize: 11.5, color: darkMode ? "#999" : "#777", margin: 0 }}>Ajustá la paleta de color, tipografía y la distribución de la hoja.</p>
+            </div>
+            
+            <label className="cvb-label">Paletas Armónicas</label>
+            <div style={{ display: "flex", gap: 10, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
+              {PRESET_PALETTES.map(p => (
+                <div key={p.id} onClick={() => setPalette(p)} className="color-swatch" style={{ background: p.primary, border: palette.id === p.id ? `3px solid ${headingColor}` : "2px solid transparent" }} title={p.name} />
+              ))}
+            </div>
+
+            {/* SELECTOR DE COLOR X/Y LIBRE */}
+            <div style={{ marginBottom: 20, background: darkMode ? "#2D2D2D" : "#F9FAF8", border: `1px solid ${cardBorder}`, borderRadius: 10, padding: 12 }}>
+              <label className="cvb-label" style={{ marginBottom: 6 }}>Selector de Color Libre (Cualquier tono)</label>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <input 
+                  type="color" 
+                  value={palette.primary.length === 7 ? palette.primary : "#9C4235"} 
+                  onChange={(e) => setPalette(generateCustomPalette(e.target.value))} 
+                  style={{ width: 42, height: 36, border: `1px solid ${cardBorder}`, borderRadius: 6, cursor: "pointer", padding: 2, background: cardBg }} 
+                />
+                <input 
+                  className="cvb-input"
+                  style={{ flex: 1, textTransform: "uppercase", fontWeight: 600, fontSize: 12 }}
+                  value={palette.primary} 
+                  onChange={(e) => setPalette(generateCustomPalette(e.target.value))} 
+                  placeholder="#000000"
+                />
               </div>
             </div>
 
-            {/* SECCIONES FORMULARIO CV */}
-            <Section title="2. Datos personales" hint="Contacto directo y foto (opcional)." visible={visible.photo} onToggle={() => setVisible(v => ({ ...v, photo: !v.photo }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+            <label className="cvb-label">Tono de Fuente</label>
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              {FONTS.map(f => (
+                <button key={f.id} onClick={() => setSelectedFont(f.id)} style={{ flex: 1, padding: "8px", fontSize: 12, borderRadius: 6, border: selectedFont === f.id ? `1px solid ${palette.primary}` : `1px solid ${cardBorder}`, background: selectedFont === f.id ? palette.surface : cardBg, color: selectedFont === f.id ? palette.primary : textColor, fontWeight: selectedFont === f.id ? 600 : 400, fontFamily: f.family }}>
+                  {f.name}
+                </button>
+              ))}
+            </div>
+
+            <label className="cvb-label">Densidad / Espaciado de Hoja</label>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              {DENSITIES.map(d => (
+                <button key={d.id} onClick={() => setDensity(d.id)} style={{ flex: 1, padding: "8px", fontSize: 12, borderRadius: 6, border: density === d.id ? `1px solid ${palette.primary}` : `1px solid ${cardBorder}`, background: density === d.id ? palette.surface : cardBg, color: density === d.id ? palette.primary : textColor, fontWeight: density === d.id ? 600 : 400 }}>
+                  {d.name}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: darkMode ? "#999" : "#777", margin: "0 0 20px" }}>
+              Achicá o agrandá texto y márgenes para hacer entrar todo en 1 o 2 hojas.
+            </p>
+
+            <label className="cvb-label">Diseño de Hoja</label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+              {TEMPLATES.map((t) => (
+                <div key={t.id} onClick={() => setTemplateId(t.id)} style={{ padding: "12px 14px", borderRadius: 8, background: templateId === t.id ? palette.surface : cardBg, border: templateId === t.id ? `1px solid ${palette.primary}` : `1px solid ${cardBorder}`, cursor: "pointer", transition: "all 0.2s" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: templateId === t.id ? palette.primary : headingColor }}>{t.name}</span>
+                  <p style={{ fontSize: 11, margin: "4px 0 0", color: darkMode ? "#999" : "#777", fontWeight: 400 }}>{t.blurb}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* FORMULARIO */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <Section title="2. Datos personales" hint="Información de contacto directa y foto profesional (opcional)." visible={visible.photo} onToggle={() => setVisible(v => ({ ...v, photo: !v.photo }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
-                {cv.personal.photo ? <img src={cv.personal.photo} alt="Perfil" style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover" }} /> : <div style={{ width: 60, height: 60, borderRadius: "50%", background: darkMode ? "#333" : "#F4F5F4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#AAA" }}>FOTO</div>}
+                {cv.personal.photo ? <img src={cv.personal.photo} alt="Perfil" style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover", border: `1px solid ${palette.secondary}` }} /> : <div style={{ width: 60, height: 60, borderRadius: "50%", background: darkMode ? "#333" : "#F4F5F4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#AAA", fontWeight: 500 }}>FOTO</div>}
                 <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e.target.files && e.target.files[0])} style={{ fontSize: 12, color: textColor }} />
               </div>
               <Field label="Nombre completo" value={cv.personal.name} onChange={(v) => updatePersonal("name", v)} />
@@ -643,31 +767,58 @@ export default function App() {
               <Row2><Field label="Ubicación" value={cv.personal.location} onChange={(v) => updatePersonal("location", v)} /><Field label="LinkedIn / URL" value={cv.personal.linkedin} onChange={(v) => updatePersonal("linkedin", v)} /></Row2>
             </Section>
 
-            <Section title="3. Perfil Profesional" hint="Sintetizá en 3 o 4 líneas tus fortalezas." visible={visible.summary} onToggle={() => setVisible(v => ({ ...v, summary: !v.summary }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
-              <textarea className="cvb-input" rows={4} value={cv.summary} onChange={(e) => setCv((c) => ({ ...c, summary: e.target.value }))} placeholder="Breve descripción..." />
+            <Section title="3. Perfil Profesional" hint="Sintetizá en 3 o 4 líneas tus fortalezas, especialidad y valor principal." visible={visible.summary} onToggle={() => setVisible(v => ({ ...v, summary: !v.summary }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+              <textarea className="cvb-input" rows={4} value={cv.summary} onChange={(e) => setCv((c) => ({ ...c, summary: e.target.value }))} placeholder="Breve descripción de tu valor profesional..." />
             </Section>
 
-            <Section title="4. Experiencia Laboral" hint="Puestos pasados con verbos de acción." visible={visible.experience} onToggle={() => setVisible(v => ({ ...v, experience: !v.experience }))} onAdd={addExperience} addLabel="+ Puesto" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+            <Section title="4. Experiencia Laboral" hint="Detallá puestos pasados iniciando cada logro con verbos de acción e indicadores." visible={visible.experience} onToggle={() => setVisible(v => ({ ...v, experience: !v.experience }))} onAdd={addExperience} addLabel="+ Puesto" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               {cv.experience.map((exp, i) => (
                 <div key={exp.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase" }}>Puesto #{i + 1}</span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button className="arrow-btn" onClick={() => moveExperience(i, "up")} disabled={i === 0}><IconArrowUp color={textColor} /></button>
+                      <button className="arrow-btn" onClick={() => moveExperience(i, "down")} disabled={i === cv.experience.length - 1}><IconArrowDown color={textColor} /></button>
+                    </div>
+                  </div>
                   <Row2><Field label="Puesto" value={exp.role} onChange={(v) => updateExperience(exp.id, "role", v)} /><Field label="Empresa" value={exp.company} onChange={(v) => updateExperience(exp.id, "company", v)} /></Row2>
                   <Row2><Field label="Desde" value={exp.start} onChange={(v) => updateExperience(exp.id, "start", v)} /><Field label="Hasta" value={exp.end} onChange={(v) => updateExperience(exp.id, "end", v)} /></Row2>
+                  
                   <label className="cvb-label" style={{ marginTop: 12 }}>Logros (Mejorar con IA)</label>
                   {exp.bullets.map((b, bi) => (
                     <div key={bi} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                      <input className="cvb-input" value={b} onChange={(e) => updateBullet(exp.id, bi, e.target.value)} placeholder="Ej: Reduje costos..." />
-                      <button className="cvb-btn" onClick={() => improveBulletAI(exp.id, bi, b)} style={{ background: palette.surface, color: palette.primary, padding: "0 10px" }}><IconSparkles color={palette.primary} /></button>
-                      <button className="cvb-btn" onClick={() => removeBullet(exp.id, bi)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
+                      <input className="cvb-input" value={b} onChange={(e) => updateBullet(exp.id, bi, e.target.value)} placeholder="Ej: Reduje costos un 10%..." />
+                      <button className="cvb-btn" onClick={() => improveBulletAI(exp.id, bi, b)} style={{ background: palette.surface, color: palette.primary, padding: "0 12px" }} title="Optimizar frase con IA">
+                        {loadingAI === `${exp.id}-${bi}` ? "…" : <IconSparkles color={palette.primary} />}
+                      </button>
+                      <button className="cvb-btn" onClick={() => removeBullet(exp.id, bi)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 12px" }}>✕</button>
                     </div>
                   ))}
                   <button className="cvb-btn" onClick={() => addBullet(exp.id)} style={{ background: "transparent", color: palette.primary, fontSize: 12, padding: "4px 0" }}>+ Agregar logro</button>
+                  {cv.experience.length > 1 && <button className="cvb-btn" onClick={() => removeExperience(exp.id)} style={{ background: "transparent", color: "#C45B52", fontSize: 12, marginLeft: 16 }}>Eliminar Puesto</button>}
                 </div>
               ))}
+
+              <div style={{ background: palette.surface, borderRadius: 8, padding: 14, marginTop: 12 }}>
+                <h4 style={{ fontSize: 11, fontWeight: 700, margin: "0 0 8px", color: palette.primary, textTransform: "uppercase" }}>Verbos de acción sugeridos:</h4>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {ATS_VERBS.map((verb, i) => (
+                    <span key={i} style={{ background: cardBg, border: `1px solid ${palette.accent}`, color: palette.secondary, fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 4 }}>{verb}</span>
+                  ))}
+                </div>
+              </div>
             </Section>
 
-            <Section title="5. Educación" hint="Carreras y estudios." visible={visible.education} onToggle={() => setVisible(v => ({ ...v, education: !v.education }))} onAdd={addEducation} addLabel="+ Estudio" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
-              {cv.education.map((ed) => (
+            <Section title="5. Educación" hint="Formación académica, títulos oficiales, cursos relevantes o certificaciones." visible={visible.education} onToggle={() => setVisible(v => ({ ...v, education: !v.education }))} onAdd={addEducation} addLabel="+ Estudio" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+              {cv.education.map((ed, i) => (
                 <div key={ed.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase" }}>Estudio #{i + 1}</span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button className="arrow-btn" onClick={() => moveEducation(i, "up")} disabled={i === 0}><IconArrowUp color={textColor} /></button>
+                      <button className="arrow-btn" onClick={() => moveEducation(i, "down")} disabled={i === cv.education.length - 1}><IconArrowDown color={textColor} /></button>
+                    </div>
+                  </div>
                   <Field label="Título / Carrera" value={ed.degree} onChange={(v) => updateEducation(ed.id, "degree", v)} />
                   <Field label="Institución" value={ed.institution} onChange={(v) => updateEducation(ed.id, "institution", v)} />
                   <Row2><Field label="Desde" value={ed.start} onChange={(v) => updateEducation(ed.id, "start", v)} /><Field label="Hasta" value={ed.end} onChange={(v) => updateEducation(ed.id, "end", v)} /></Row2>
@@ -675,240 +826,115 @@ export default function App() {
               ))}
             </Section>
 
-            <Section title="Habilidades" visible={visible.skills} onToggle={() => setVisible(v => ({ ...v, skills: !v.skills }))} onAdd={addSkill} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+            <Section title="Habilidades" hint="Competencias blandas y técnicas esenciales para tu puesto." visible={visible.skills} onToggle={() => setVisible(v => ({ ...v, skills: !v.skills }))} onAdd={addSkill} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               {cv.skills.map((s) => (
                 <div key={s.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                  <input className="cvb-input" value={s.name} onChange={(e) => updateSkillName(s.id, e.target.value)} placeholder="Ej. Liderazgo" />
+                  <input className="cvb-input" value={s.name} onChange={(e) => updateSkillName(s.id, e.target.value)} placeholder="Ej. Liderazgo de equipos" />
                   <button className="cvb-btn" onClick={() => removeSkill(s.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
                 </div>
               ))}
             </Section>
 
-            <Section title="Herramientas / Software" visible={visible.tools ?? true} onToggle={() => setVisible(v => ({ ...v, tools: !v.tools }))} onAdd={addTool} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+            <Section title="Herramientas / Software" hint="Programas, sistemas y tecnologías que manejás (Excel, SAP, etc.)." visible={visible.tools ?? true} onToggle={() => setVisible(v => ({ ...v, tools: !v.tools }))} onAdd={addTool} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               {cv.tools.map((t) => (
                 <div key={t.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                  <input className="cvb-input" value={t.name} onChange={(e) => updateToolName(t.id, e.target.value)} placeholder="Ej. Excel, SAP" />
+                  <input className="cvb-input" value={t.name} onChange={(e) => updateToolName(t.id, e.target.value)} placeholder="Ej. Excel, Power BI, SAP, Amadeus" />
                   <button className="cvb-btn" onClick={() => removeTool(t.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
                 </div>
               ))}
             </Section>
 
-            <Section title="Idiomas" visible={visible.languages} onToggle={() => setVisible(v => ({ ...v, languages: !v.languages }))} onAdd={addLanguage} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+            <Section title="Idiomas" hint="Nivel de manejo oral y escrito de otras lenguas." visible={visible.languages} onToggle={() => setVisible(v => ({ ...v, languages: !v.languages }))} onAdd={addLanguage} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               {cv.languages.map((l) => (
-                <Row2 key={l.id}>
-                  <Field label="Idioma" value={l.name} onChange={(v) => updateLanguage(l.id, "name", v)} placeholder="Ej. Inglés" />
-                  <Field label="Nivel" value={l.level} onChange={(v) => updateLanguage(l.id, "level", v)} placeholder="Ej. Avanzado C1" />
-                </Row2>
+                <div key={l.id} style={{ marginBottom: 12 }}>
+                  <Row2>
+                    <Field label="Idioma" value={l.name} onChange={(v) => updateLanguage(l.id, "name", v)} placeholder="Ej. Inglés" />
+                    <Field label="Nivel" value={l.level} onChange={(v) => updateLanguage(l.id, "level", v)} placeholder="Ej. Avanzado C1" />
+                  </Row2>
+                </div>
               ))}
             </Section>
 
-            <Section title="Secciones Personalizadas" onAdd={addCustomSection} addLabel="+ Sección" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+            {/* SECCIONES PERSONALIZADAS */}
+            <Section title="Secciones Personalizadas" hint="Agregá bloques libres con título a elección (Certificaciones, Voluntariados, Proyectos)." onAdd={addCustomSection} addLabel="+ Nueva Sección" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               {(cv.customSections || []).map((sec) => (
                 <div key={sec.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
-                    <input className="cvb-input" style={{ fontWeight: 700, color: palette.primary }} value={sec.title} onChange={(e) => updateCustomSectionTitle(sec.id, e.target.value)} />
-                    <button className="cvb-btn" onClick={() => removeCustomSection(sec.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 12px" }}>✕</button>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 12, alignItems: "center" }}>
+                    <input className="cvb-input" style={{ fontWeight: 700, color: palette.primary }} value={sec.title} onChange={(e) => updateCustomSectionTitle(sec.id, e.target.value)} placeholder="Título de la Sección" />
+                    <button className="cvb-btn" onClick={() => removeCustomSection(sec.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 12px", height: 38 }}>✕</button>
                   </div>
+
+                  <label className="cvb-label">Elementos / Ítems</label>
                   {sec.items.map((item, idx) => (
                     <div key={idx} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                      <input className="cvb-input" value={item} onChange={(e) => updateCustomItem(sec.id, idx, e.target.value)} placeholder="Ej. Certificación..." />
+                      <input className="cvb-input" value={item} onChange={(e) => updateCustomItem(sec.id, idx, e.target.value)} placeholder="Ej. Certificación Scrum Master (2024)..." />
                       <button className="cvb-btn" onClick={() => removeCustomItem(sec.id, idx)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
                     </div>
                   ))}
-                  <button className="cvb-btn" onClick={() => addCustomItem(sec.id)} style={{ background: "transparent", color: palette.primary, fontSize: 12 }}>+ Ítem</button>
+                  <button className="cvb-btn" onClick={() => addCustomItem(sec.id)} style={{ background: "transparent", color: palette.primary, fontSize: 12, padding: "4px 0" }}>+ Agregar ítem</button>
                 </div>
               ))}
             </Section>
-
-          </div>
-
-          {/* PANEL DERECHO CV */}
-          <div className="panel-right-mobile" style={{ flex: "2 1 520px", minWidth: 320, overflowX: "auto", display: "flex", justifyContent: "center", paddingBottom: 60 }}>
-            <div className="print-area-container">
-              <div className="print-area-wrapper">
-                <div className="page-break-indicator" data-html2canvas-ignore="true" />
-                <div ref={printRef} className="print-area">
-                  <CVPreview data={cv} templateId={templateId} palette={palette} font={currentFontFamily} density={density} visible={visible} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      {/* MÓDULO 2: IMPULSO ENTREVISTA */}
-      {activeAppModule === 'entrevista' && (
-        <div style={{ maxWidth: 800, margin: "32px auto", padding: "0 24px" }}>
-          <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 16, padding: 32 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 8px", color: headingColor, display: "flex", alignItems: "center" }}>
-              🎙️ Impulso Entrevista (Simulador IA)
-            </h2>
-            <p style={{ fontSize: 13, color: darkMode ? "#999" : "#666", marginBottom: 24 }}>
-              Practicá preguntas técnicas y por competencias ajustadas a tu puesto. La IA evaluará tus respuestas bajo el formato STAR.
-            </p>
-
-            <Field label="Puesto / Rol a Simular" value={interviewRole} onChange={setJobInterviewRole} placeholder="Ej. Analista de Logística / Project Manager..." />
             
-            <button className="cvb-btn" onClick={generateInterviewQuestion} disabled={loadingInterview} style={{ padding: "10px 20px", background: palette.primary, color: "#fff", fontSize: 13, marginBottom: 24 }}>
-              {loadingInterview ? "Generando pregunta..." : "Obtener Pregunta de Entrevista IA"}
-            </button>
+            <div style={{ textAlign: "center", padding: "24px 0 12px", color: darkMode ? "#999" : "#777", fontSize: 12.5, fontWeight: 400, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              Espero te sirva. Muchos éxitos. <IconHeart color={palette.secondary} />
+            </div>
 
-            {interviewQuestion && (
-              <div style={{ background: palette.surface, border: `1px solid ${palette.accent}`, borderRadius: 12, padding: 18, marginBottom: 20 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: palette.primary, textTransform: "uppercase" }}>Pregunta del Reclutador:</span>
-                <p style={{ fontSize: 15, fontWeight: 600, color: headingColor, margin: "6px 0 0" }}>"{interviewQuestion}"</p>
-              </div>
-            )}
-
-            {interviewQuestion && (
-              <div>
-                <label className="cvb-label">Tu Respuesta (Escribí como si estuvieras respondiendo en la entrevista)</label>
-                <textarea className="cvb-input" rows={5} value={userAnswer} onChange={(e) => setUserAnswer(e.target.value)} placeholder="En mi anterior puesto ocurrió que..." style={{ marginBottom: 12 }} />
-                
-                <button className="cvb-btn" onClick={evaluateStarAnswer} disabled={loadingInterview || !userAnswer.trim()} style={{ padding: "10px 20px", background: "#2B2B2B", color: "#fff", fontSize: 13 }}>
-                  {loadingInterview ? "Evaluando respuesta..." : "Evaluar con Metodología STAR"}
-                </button>
-              </div>
-            )}
-
-            {starFeedback && (
-              <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${cardBorder}` }} dangerouslySetInnerHTML={{ __html: formatMarkdown(starFeedback) }} />
-            )}
           </div>
         </div>
-      )}
 
-      {/* MÓDULO 3: IMPULSO PITCH */}
-      {activeAppModule === 'pitch' && (
-        <div style={{ maxWidth: 800, margin: "32px auto", padding: "0 24px" }}>
-          <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 16, padding: 32 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 8px", color: headingColor }}>
-              ✍️ Impulso Pitch (Cartas & LinkedIn)
-            </h2>
-            <p style={{ fontSize: 13, color: darkMode ? "#999" : "#666", marginBottom: 24 }}>
-              Redactá contenidos persuasivos para acompañar tu postulación o contactar reclutadores.
-            </p>
-
-            <Row2>
-              <div>
-                <label className="cvb-label">Tipo de Formato</label>
-                <select className="cvb-input" value={pitchType} onChange={(e) => setPitchType(e.target.value)} style={{ marginBottom: 16 }}>
-                  <option value="cover">Carta de Presentación</option>
-                  <option value="linkedin">Extracto 'Sobre Mí' (LinkedIn)</option>
-                  <option value="email">Mensaje Directo a Reclutador</option>
-                </select>
+        {/* PANEL DERECHO */}
+        <div className="panel-right-mobile" style={{ flex: "2 1 520px", minWidth: 320, overflowX: "auto", display: "flex", justifyContent: "center", paddingBottom: 60 }}>
+          <div className="print-area-container">
+            <div className="print-area-wrapper">
+              <div className="page-break-indicator" data-html2canvas-ignore="true" />
+              <div ref={printRef} className="print-area">
+                <CVPreview data={cv} templateId={templateId} palette={palette} font={currentFontFamily} density={density} visible={visible} />
               </div>
-              <div>
-                <label className="cvb-label">Tono</label>
-                <select className="cvb-input" value={pitchTone} onChange={(e) => setPitchTone(e.target.value)} style={{ marginBottom: 16 }}>
-                  <option value="Corporativo">Corporativo</option>
-                  <option value="Dinámico">Dinámico</option>
-                  <option value="Creativo">Creativo</option>
-                </select>
-              </div>
-            </Row2>
-
-            <button className="cvb-btn" onClick={generatePitchContent} disabled={loadingPitch} style={{ padding: "10px 20px", background: palette.primary, color: "#fff", fontSize: 13, marginBottom: 24 }}>
-              {loadingPitch ? "Redactando..." : "Generar Contenido con IA"}
-            </button>
-
-            {pitchResult && (
-              <div style={{ background: darkMode ? "#2D2D2D" : "#F9FAF8", border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 20 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, uppercase: true }}>Resultado Generado:</span>
-                  <button className="cvb-btn" onClick={() => navigator.clipboard.writeText(pitchResult)} style={{ padding: "4px 10px", fontSize: 11, background: cardBg, border: `1px solid ${cardBorder}` }}>Copiar Texto</button>
-                </div>
-                <textarea className="cvb-input" rows={10} value={pitchResult} onChange={(e) => setPitchResult(e.target.value)} />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* MÓDULO 4: IMPULSO TRACKER KANBAN */}
-      {activeAppModule === 'tracker' && (
-        <div style={{ maxWidth: 1100, margin: "32px auto", padding: "0 24px" }}>
-          <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 16, padding: 24, marginBottom: 24 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 8px", color: headingColor }}>
-              📊 Impulso Tracker (Tablero de Búsquedas)
-            </h2>
-            <p style={{ fontSize: 13, color: darkMode ? "#999" : "#666", marginBottom: 16 }}>
-              Llevá el control de tus postulaciones y etapas de selección.
-            </p>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <input className="cvb-input" style={{ flex: 1, minWidth: 180 }} placeholder="Empresa (ej. Mercado Libre)" value={newCompany} onChange={(e) => setNewCompany(e.target.value)} />
-              <input className="cvb-input" style={{ flex: 1, minWidth: 180 }} placeholder="Puesto (ej. Analista)" value={newRole} onChange={(e) => setNewRole(e.target.value)} />
-              <button className="cvb-btn" onClick={addTrackerCard} style={{ padding: "0 20px", background: palette.primary, color: "#fff", height: 38 }}>+ Agregar Postulación</button>
             </div>
           </div>
-
-          {/* TABLERO KANBAN */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-            {["postulado", "entrevista", "tecnica", "oferta"].map((colKey) => {
-              const titles = { postulado: "Postulado", entrevista: "Entrevista RRHH", tecnica: "Evaluación Técnica", oferta: "Oferta Recibida" };
-              const cardsInCol = trackerCards.filter(c => c.status === colKey);
-              return (
-                <div key={colKey} style={{ background: darkMode ? "#222" : "#EAECE8", borderRadius: 12, padding: 14, minHeight: 300 }}>
-                  <h4 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", margin: "0 0 12px", color: headingColor }}>
-                    {titles[colKey]} ({cardsInCol.length})
-                  </h4>
-                  {cardsInCol.map(card => (
-                    <div key={card.id} style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 12, marginBottom: 10 }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: headingColor }}>{card.role}</div>
-                      <div style={{ fontSize: 12, color: palette.primary, margin: "2px 0 8px" }}>{card.company}</div>
-                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                        {colKey !== 'postulado' && <button className="cvb-btn" onClick={() => moveTrackerCard(card.id, 'postulado')} style={{ fontSize: 10, padding: "2px 6px", background: cardBg, border: `1px solid ${cardBorder}` }}>← Post</button>}
-                        {colKey !== 'entrevista' && <button className="cvb-btn" onClick={() => moveTrackerCard(card.id, 'entrevista')} style={{ fontSize: 10, padding: "2px 6px", background: cardBg, border: `1px solid ${cardBorder}` }}>Entrevista</button>}
-                        {colKey !== 'tecnica' && <button className="cvb-btn" onClick={() => moveTrackerCard(card.id, 'tecnica')} style={{ fontSize: 10, padding: "2px 6px", background: cardBg, border: `1px solid ${cardBorder}` }}>Técnica</button>}
-                        {colKey !== 'oferta' && <button className="cvb-btn" onClick={() => moveTrackerCard(card.id, 'oferta')} style={{ fontSize: 10, padding: "2px 6px", background: cardBg, border: `1px solid ${cardBorder}` }}>Oferta →</button>}
-                        <button className="cvb-btn" onClick={() => removeTrackerCard(card.id)} style={{ fontSize: 10, padding: "2px 6px", background: "#FDEAE8", color: "#C45B52" }}>✕</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
         </div>
-      )}
 
-      {/* MÓDULO 5: IMPULSO SALARIO */}
-      {activeAppModule === 'salario' && (
-        <div style={{ maxWidth: 800, margin: "32px auto", padding: "0 24px" }}>
-          <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 16, padding: 32 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 8px", color: headingColor }}>
-              💰 Impulso Salario (Calculadora & Negociación)
-            </h2>
-            <p style={{ fontSize: 13, color: darkMode ? "#999" : "#666", marginBottom: 24 }}>
-              Estimá el rango salarial aproximado para tu puesto y obtené un guion para negociar pretensiones.
+      </div>
+
+      {/* MODAL IMPORTAR CV EXISTENTE */}
+      {isImportModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsImportModalOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: headingColor, display: "flex", alignItems: "center" }}>
+                <IconUpload color={palette.primary} /> Importar Datos desde CV Existente
+              </h2>
+              <button onClick={() => setIsImportModalOpen(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#888" }}>✕</button>
+            </div>
+
+            <p style={{ fontSize: 12.5, color: darkMode ? "#AAA" : "#666", marginBottom: 14 }}>
+              Pegá el texto completo de tu CV actual o cargá un archivo `.txt`. La IA extraerá automáticamente tu información para completar los campos.
             </p>
 
-            <Row2>
-              <Field label="Puesto A Consultar" value={targetRoleSalary} onChange={setTargetRoleSalary} placeholder="Ej. Analista de Datos / Contador" />
-              <div>
-                <label className="cvb-label">Seniority</label>
-                <select className="cvb-input" value={salarySeniority} onChange={(e) => setSalarySeniority(e.target.value)}>
-                  <option value="Junior">Junior (0-2 años)</option>
-                  <option value="Semi-Senior">Semi-Senior (2-5 años)</option>
-                  <option value="Senior">Senior (5+ años)</option>
-                  <option value="Líder / Manager">Líder / Manager</option>
-                </select>
-              </div>
-            </Row2>
+            <div style={{ marginBottom: 12 }}>
+              <label className="cvb-label">Subir Archivo de Texto (.txt / .md)</label>
+              <input type="file" accept=".txt,.md" onChange={handleFileUpload} style={{ fontSize: 12, color: textColor }} />
+            </div>
 
-            <button className="cvb-btn" onClick={generateSalaryGuidance} disabled={loadingSalary || !targetRoleSalary.trim()} style={{ padding: "10px 20px", background: palette.primary, color: "#fff", fontSize: 13, marginTop: 12, marginBottom: 24 }}>
-              {loadingSalary ? "Consultando guía..." : "Calcular Rango y Guion de Negociación"}
+            <label className="cvb-label">o Pegá el Texto de tu CV:</label>
+            <textarea 
+              className="cvb-input" 
+              rows={8} 
+              value={rawCvText} 
+              onChange={(e) => setRawCvText(e.target.value)} 
+              placeholder="Nombre, Experiencia laboral, Educación, Habilidades..." 
+              style={{ marginBottom: 16 }}
+            />
+
+            <button className="cvb-btn" onClick={handleExtractCvData} disabled={loadingImport || !rawCvText.trim()} style={{ width: "100%", padding: "12px", background: palette.primary, color: "#fff", fontSize: 13, fontWeight: 600 }}>
+              {loadingImport ? "Procesando e integrando datos..." : "Extraer y Auto-completar CV"}
             </button>
-
-            {salaryResult && (
-              <div style={{ background: darkMode ? "#2D2D2D" : "#F9FAF8", border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 20 }} dangerouslySetInnerHTML={{ __html: formatMarkdown(salaryResult) }} />
-            )}
           </div>
         </div>
       )}
 
-      {/* MODAL IA GENERAL */}
+      {/* MODAL IA REVISIÓN */}
       {isAiModalOpen && (
         <div className="modal-overlay" onClick={() => setIsAiModalOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
