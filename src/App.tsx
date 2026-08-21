@@ -215,6 +215,17 @@ export default function App() {
   };
 
   const updatePersonal = (field, value) => setCv((c) => ({ ...c, personal: { ...c.personal, [field]: value } }));
+
+  /* CARGA DE FOTO DE PERFIL */
+  const handlePhotoUpload = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      updatePersonal("photo", e.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const moveExperience = (index, direction) => { const newExp = [...cv.experience]; const targetIdx = direction === "up" ? index - 1 : index + 1; if (targetIdx < 0 || targetIdx >= newExp.length) return; [newExp[index], newExp[targetIdx]] = [newExp[targetIdx], newExp[index]]; setCv((c) => ({ ...c, experience: newExp })); };
   const moveEducation = (index, direction) => { const newEd = [...cv.education]; const targetIdx = direction === "up" ? index - 1 : index + 1; if (targetIdx < 0 || targetIdx >= newEd.length) return; [newEd[index], newEd[targetIdx]] = [newEd[targetIdx], newEd[index]]; setCv((c) => ({ ...c, education: newEd })); };
   const updateExperience = (id, field, value) => setCv((c) => ({ ...c, experience: c.experience.map((e) => (e.id === id ? { ...e, [field]: value } : e)) }));
@@ -245,7 +256,7 @@ export default function App() {
   const updateCustomItem = (secId, idx, val) => setCv(c => ({ ...c, customSections: (c.customSections || []).map(s => s.id === secId ? { ...s, items: s.items.map((item, i) => i === idx ? val : item) } : s) }));
   const removeCustomItem = (secId, idx) => setCv(c => ({ ...c, customSections: (c.customSections || []).map(s => s.id === secId ? { ...s, items: s.items.filter((_, i) => i !== idx) } : s) }));
 
-  /* APLICADOR SEGURO DE DATOS DE CV */
+  /* APLICADOR SEGURO DE DATOS */
   const applyParsedCvData = (parsed) => {
     setCv({
       ...emptyCV(),
@@ -619,17 +630,17 @@ Si algún campo no figura, dejalo como string vacío.`;
 
               <button 
                 onClick={handleExtractCvData} 
-                disabled={loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)} 
+                disabled={loadingImport || (!rawCvText.trim() && !selectedFile)} 
                 style={{ 
                   width: "100%", 
                   padding: "12px", 
-                  background: (loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)) ? "#888" : palette.primary, 
+                  background: (loadingImport || (!rawCvText.trim() && !selectedFile)) ? "#888" : palette.primary, 
                   color: "#fff", 
                   border: "none", 
                   borderRadius: 6, 
                   fontSize: 13, 
                   fontWeight: 600, 
-                  cursor: (loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)) ? "not-allowed" : "pointer"
+                  cursor: (loadingImport || (!rawCvText.trim() && !selectedFile)) ? "not-allowed" : "pointer" 
                 }}
               >
                 {loadingImport ? "Procesando e integrando datos..." : "Extraer y Auto-completar CV"}
@@ -900,9 +911,29 @@ Si algún campo no figura, dejalo como string vacío.`;
             </div>
           </div>
 
-          {/* FORMULARIO */}
+          {/* FORMULARIO DE EDICIÓN */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* SECCIÓN 2: DATOS PERSONALES CON OPCIÓN DE FOTO INTEGRADA */}
             <Section title="2. Datos personales" hint="Información de contacto directa y foto profesional (opcional)." visible={visible.photo} onToggle={() => setVisible(v => ({ ...v, photo: !v.photo }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+              
+              {/* CAMPO Y VISTA PREVIA DE FOTO RESTABLECIDOS */}
+              <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
+                {cv.personal.photo ? (
+                  <img src={cv.personal.photo} alt="Perfil" style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover", border: `2px solid ${palette.primary}` }} />
+                ) : (
+                  <div style={{ width: 60, height: 60, borderRadius: "50%", background: darkMode ? "#333" : "#F4F5F4", border: `1px dashed ${cardBorder}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#AAA", fontWeight: 500 }}>FOTO</div>
+                )}
+                <div style={{ flex: 1 }}>
+                  <label className="cvb-label">Subir Foto Profesional</label>
+                  <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e.target.files && e.target.files[0])} style={{ fontSize: 12, color: textColor }} />
+                  {cv.personal.photo && (
+                    <button onClick={() => updatePersonal("photo", "")} style={{ background: "none", border: "none", color: "#C45B52", fontSize: 11, cursor: "pointer", display: "block", marginTop: 4 }}>
+                      Remover foto
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <Field label="Nombre completo" value={cv.personal.name} onChange={(v) => updatePersonal("name", v)} />
               <Field label="Puesto / Titular" value={cv.personal.title} onChange={(v) => updatePersonal("title", v)} />
               <Row2><Field label="Email" value={cv.personal.email} onChange={(v) => updatePersonal("email", v)} /><Field label="Teléfono" value={cv.personal.phone} onChange={(v) => updatePersonal("phone", v)} /></Row2>
@@ -913,6 +944,7 @@ Si algún campo no figura, dejalo como string vacío.`;
               <textarea className="cvb-input" rows={4} value={cv.summary} onChange={(e) => setCv((c) => ({ ...c, summary: e.target.value }))} placeholder="Breve descripción de tu valor profesional..." />
             </Section>
 
+            {/* SECCIÓN 4: EXPERIENCIA LABORAL CON ORDEN SOLICITADO */}
             <Section title="4. Experiencia Laboral" hint="Detallá puestos pasados iniciando cada logro con verbos de acción e indicadores." visible={visible.experience} onToggle={() => setVisible(v => ({ ...v, experience: !v.experience }))} onAdd={addExperience} addLabel="+ Puesto" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               {cv.experience.map((exp, i) => (
                 <div key={exp.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
@@ -926,11 +958,8 @@ Si algún campo no figura, dejalo como string vacío.`;
                   
                   {/* 1. PUESTO Y EMPRESA */}
                   <Row2><Field label="Puesto" value={exp.role} onChange={(v) => updateExperience(exp.id, "role", v)} /><Field label="Empresa" value={exp.company} onChange={(v) => updateExperience(exp.id, "company", v)} /></Row2>
-                  
-                  {/* 2. DESDE Y HASTA */}
-                  <Row2><Field label="Desde" value={exp.start} onChange={(v) => updateExperience(exp.id, "start", v)} /><Field label="Hasta" value={exp.end} onChange={(v) => updateExperience(exp.id, "end", v)} /></Row2>
 
-                  {/* 3. RESUMEN DEL ROL EN EL MEDIO */}
+                  {/* 2. RESUMEN DEL ROL UBICADO EN EL MEDIO DE PUESTO Y DESDE/HASTA */}
                   <div style={{ marginTop: 8, marginBottom: 12 }}>
                     <label className="cvb-label">Resumen del Rol / Descripción (Detalle libre)</label>
                     <textarea 
@@ -941,9 +970,12 @@ Si algún campo no figura, dejalo como string vacío.`;
                       placeholder="Redactá en un párrafo el contexto y tus responsabilidades..." 
                     />
                   </div>
+                  
+                  {/* 3. DESDE Y HASTA */}
+                  <Row2><Field label="Desde" value={exp.start} onChange={(v) => updateExperience(exp.id, "start", v)} /><Field label="Hasta" value={exp.end} onChange={(v) => updateExperience(exp.id, "end", v)} /></Row2>
 
                   {/* 4. LOGROS Y RESULTADOS */}
-                  <label className="cvb-label" style={{ marginTop: 8 }}>Logros y Resultados (Mejorar con IA)</label>
+                  <label className="cvb-label" style={{ marginTop: 16 }}>Logros y Resultados (Mejorar con IA)</label>
                   {exp.bullets.map((b, bi) => (
                     <div key={bi} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                       <input className="cvb-input" value={b} onChange={(e) => updateBullet(exp.id, bi, e.target.value)} placeholder="Ej: Reduje costos un 10%..." />
