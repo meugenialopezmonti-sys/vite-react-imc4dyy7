@@ -21,6 +21,14 @@ const emptyCV = () => ({
   customSections: [],
 });
 
+const emptyCoverLetter = () => ({
+  date: new Date().toLocaleDateString('es-AR', { year: 'numeric', month: 'long', day: 'numeric' }),
+  recipientName: "",
+  jobTitle: "",
+  companyName: "",
+  body: "Estimado/a equipo de selección,\n\nLes escribo para presentar mi candidatura al puesto de [Puesto] en [Empresa]. A lo largo de mi trayectoria profesional...\n\nQuedo a su entera disposición para ampliar cualquier información en una entrevista.\n\nAtentamente,\n"
+});
+
 function normalizeSkills(skills) {
   if (!skills || !skills.length) return [emptySkill()];
   return skills.map((s) => typeof s === "string" ? { id: uid(), name: s, level: 4 } : { id: s.id || uid(), name: s.name || "", level: s.level || 4 });
@@ -147,8 +155,10 @@ async function callClaude(promptOrMessages) {
 /* ---------- APP PRINCIPAL ---------- */
 export default function App() {
   const [showLanding, setShowLanding] = useState(true);
+  const [activeDoc, setActiveDoc] = useState("cv"); // "cv" o "letter"
   const [darkMode, setDarkMode] = useState(false);
   const [cv, setCv] = useState(emptyCV());
+  const [coverLetter, setCoverLetter] = useState(emptyCoverLetter());
   const [templateId, setTemplateId] = useState("nordico");
   const [palette, setPalette] = useState(PRESET_PALETTES[0]); 
   const [selectedFont, setSelectedFont] = useState("nunito");
@@ -184,6 +194,7 @@ export default function App() {
       if (res) {
         const parsed = JSON.parse(res);
         if (parsed.cv) setCv({ ...emptyCV(), ...parsed.cv, personal: { ...emptyCV().personal, ...parsed.cv.personal }, skills: normalizeSkills(parsed.cv.skills), tools: normalizeTools(parsed.cv.tools), customSections: parsed.cv.customSections || [] });
+        if (parsed.coverLetter) setCoverLetter({ ...emptyCoverLetter(), ...parsed.coverLetter });
         if (parsed.templateId) setTemplateId(parsed.templateId);
         if (parsed.palette) setPalette(parsed.palette);
         if (parsed.selectedFont) setSelectedFont(parsed.selectedFont);
@@ -198,14 +209,15 @@ export default function App() {
   useEffect(() => {
     if (!loaded) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ cv, templateId, palette, selectedFont, density, darkMode, visible })); } catch (e) {} }, 700);
+    saveTimer.current = setTimeout(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ cv, coverLetter, templateId, palette, selectedFont, density, darkMode, visible })); } catch (e) {} }, 700);
     return () => clearTimeout(saveTimer.current);
-  }, [cv, templateId, palette, selectedFont, density, darkMode, visible, loaded]);
+  }, [cv, coverLetter, templateId, palette, selectedFont, density, darkMode, visible, loaded]);
 
   const handleResetCV = () => {
-    if (window.confirm("¿Seguro que querés borrar todo el contenido y empezar un CV desde cero?")) {
+    if (window.confirm("¿Seguro que querés borrar todo el contenido y empezar un documento desde cero?")) {
       localStorage.removeItem(STORAGE_KEY);
       setCv(emptyCV());
+      setCoverLetter(emptyCoverLetter());
       setAtsAnalysis(null);
       setJobDescription("");
       setDensity("normal");
@@ -453,6 +465,23 @@ Si algún campo no figura, dejalo como string vacío.`;
     setLoadingAI(null);
   };
 
+  /* GENERAR CARTA DE PRESENTACIÓN CON IA */
+  const handleGenerateCoverLetter = async () => {
+    setLoadingAI('letter');
+    try {
+      const prompt = `Actuá como un profesional postulándose a un trabajo. Redactá una carta de presentación formal y persuasiva.
+Mi CV resumido es: Nombre: ${cv.personal.name}. Perfil: ${cv.summary}. Experiencia principal: ${cv.experience.map(e=>`${e.role} en ${e.company}`).join('; ')}.
+Escribila para el puesto de "${coverLetter.jobTitle}" en la empresa "${coverLetter.companyName}". Reclutador o Contacto: "${coverLetter.recipientName}".
+Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para usar. No incluyas fechas, ni nombre del destinatario arriba, ni "Estimado" al principio (ya están integrados en el sistema). Que sea directa, destaque cómo mi experiencia se alinea al puesto y no supere los 3 párrafos cortos.`;
+      
+      const body = await callClaude(prompt);
+      setCoverLetter(prev => ({ ...prev, body }));
+    } catch (e) {
+      alert("Ocurrió un error al generar la carta con IA. Podés escribirla manualmente.");
+    }
+    setLoadingAI(null);
+  };
+
   const handleDownloadPdf = () => {
     setDownloading(true);
     const element = printRef.current;
@@ -460,7 +489,7 @@ Si algún campo no figura, dejalo como string vacío.`;
 
     const opt = {
       margin: [0.35, 0, 0.35, 0],
-      filename: (cv.personal.name ? cv.personal.name.trim().replace(/\s+/g, "_") : "Mi_CV") + ".pdf",
+      filename: `${cv.personal.name ? cv.personal.name.trim().replace(/\s+/g, "_") : "Documento"}_${activeDoc === 'cv' ? 'CV' : 'Carta'}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
       jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
@@ -622,7 +651,7 @@ Si algún campo no figura, dejalo como string vacío.`;
                 value={rawCvText} 
                 onChange={(e) => {
                   setRawCvText(e.target.value);
-                  if (selectedFile) setSelectedFile(null);
+                  if (selectedFile) setSelectedFile(null); // Prioridad al texto manual si escribe algo
                 }} 
                 placeholder="Nombre, Experiencia laboral, Educación, Habilidades..." 
                 style={{ width: "100%", padding: "10px", borderRadius: 6, border: "1px solid #CCC", fontSize: 13, marginBottom: 16, background: "#FFF", color: "#222" }}
@@ -630,17 +659,18 @@ Si algún campo no figura, dejalo como string vacío.`;
 
               <button 
                 onClick={handleExtractCvData} 
-                disabled={loadingImport || (!rawCvText.trim() && !selectedFile)} 
+                disabled={loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)} 
                 style={{ 
                   width: "100%", 
                   padding: "12px", 
-                  background: (loadingImport || (!rawCvText.trim() && !selectedFile)) ? "#888" : palette.primary, 
+                  background: (loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)) ? "#888" : palette.primary, 
                   color: "#fff", 
                   border: "none", 
                   borderRadius: 6, 
                   fontSize: 13, 
                   fontWeight: 600, 
-                  cursor: (loadingImport || (!rawCvText.trim() && !selectedFile)) ? "not-allowed" : "pointer" 
+                  cursor: (loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)) ? "not-allowed" : "pointer",
+                  transition: "background 0.2s"
                 }}
               >
                 {loadingImport ? "Procesando e integrando datos..." : "Extraer y Auto-completar CV"}
@@ -667,6 +697,7 @@ Si algún campo no figura, dejalo como string vacío.`;
         .print-area-wrapper { position: relative; }
         .print-area { width: 794px; min-height: 1123px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin: 0 auto; }
         
+        /* LÍNEA GUÍA DE CORTE DE HOJA A4 */
         .page-break-indicator {
           position: absolute;
           top: 1123px;
@@ -705,6 +736,12 @@ Si algún campo no figura, dejalo como string vacío.`;
         .ai-text h3 { color: ${palette.primary}; font-size: 15px; margin: 16px 0 8px; border-bottom: 1px solid ${palette.accent}; padding-bottom: 4px; font-weight:600; }
         .ai-text p { font-size: 14px; line-height: 1.6; color: ${textColor}; margin: 0 0 12px; }
 
+        /* SWITCHER DE DOCUMENTOS (CV VS CARTA) */
+        .doc-switcher { display: flex; gap: 8px; margin-bottom: 20px; background: ${darkMode ? "#2D2D2D" : "#EAECE8"}; padding: 6px; border-radius: 8px; }
+        .doc-switch-btn { flex: 1; padding: 10px 0; border: none; background: transparent; font-size: 13px; font-weight: 600; border-radius: 6px; cursor: pointer; color: ${textColor}; transition: all 0.2s; }
+        .doc-switch-btn.active { background: ${cardBg}; color: ${palette.primary}; box-shadow: 0 2px 5px rgba(0,0,0,0.06); }
+
+        /* RESPONSIVE & VISTA PREVIA FIJA EN WEB */
         @media (min-width: 769px) {
           .mobile-tabs { display: none !important; }
           .panel-right-mobile {
@@ -738,7 +775,7 @@ Si algún campo no figura, dejalo como string vacío.`;
         </div>
         <div className="cvb-header-actions" style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button className="cvb-btn" onClick={() => setIsImportModalOpen(true)} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor }}>
-            <IconUpload color={textColor} /> Importar CV
+            <IconUpload color={textColor} /> Importar Datos
           </button>
           <button className="cvb-btn" onClick={() => setDarkMode(!darkMode)} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor }}>
             {darkMode ? <IconSun color="#FFD700" /> : <IconMoon color="#555" />} {darkMode ? "Claro" : "Oscuro"}
@@ -749,11 +786,13 @@ Si algún campo no figura, dejalo como string vacío.`;
           <button className="cvb-btn" onClick={handleResetCV} style={{ padding: "8px 12px", fontSize: 12, background: "transparent", border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor }} title="Limpiar todos los campos">
             <IconTrash color={textColor} /> Borrar
           </button>
-          <button className="cvb-btn" onClick={analyzeEntireCV} style={{ padding: "8px 14px", fontSize: 12, background: cardBg, border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-            <IconSparkles color={palette.primary} /> Revisar IA
-          </button>
+          {activeDoc === 'cv' && (
+            <button className="cvb-btn" onClick={analyzeEntireCV} style={{ padding: "8px 14px", fontSize: 12, background: cardBg, border: `1px solid ${darkMode ? '#555' : '#CFC7B8'}`, color: textColor, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+              <IconSparkles color={palette.primary} /> Revisar IA
+            </button>
+          )}
           <button className="cvb-btn" onClick={handleDownloadPdf} disabled={downloading} style={{ padding: "8px 18px", fontSize: 12, background: palette.primary, color: "#fff", opacity: downloading ? 0.6 : 1 }}>
-            ⬇ Descargar PDF
+            ⬇ Descargar {activeDoc === 'cv' ? 'CV' : 'Carta'}
           </button>
         </div>
       </div>
@@ -773,83 +812,86 @@ Si algún campo no figura, dejalo como string vacío.`;
         {/* PANEL IZQUIERDO */}
         <div className="panel-left-mobile" style={{ flex: "1 1 400px", minWidth: 320, maxWidth: 480 }}>
           
-          {/* MEDIDOR DE COMPLETITUD */}
-          <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 18, marginBottom: 20 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                📊 Completitud del CV
-              </span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: palette.primary }}>
-                {completeness}%
-              </span>
-            </div>
-            <div style={{ width: "100%", height: 8, background: darkMode ? "#333" : "#E2E4E2", borderRadius: 4, overflow: "hidden" }}>
-              <div style={{ width: `${completeness}%`, height: "100%", background: palette.primary, transition: "width 0.4s ease" }} />
-            </div>
-            <p style={{ fontSize: 11, color: darkMode ? "#888" : "#777", margin: "8px 0 0" }}>
-              {completeness < 50 ? "Agregá más secciones para enriquecer tu perfil." : completeness < 85 ? "¡Vas muy bien! Sumá tus logros o métricas clave." : "¡Excelente nivel de detalle!"}
-            </p>
-          </div>
-
-          {/* CAZADOR DE PALABRAS CLAVE ATS */}
-          <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 20, marginBottom: 20 }}>
-            <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 6px", color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px", display: "flex", alignItems: "center" }}>
-              <IconTarget color={palette.primary} /> 🎯 Cazador de Palabras ATS
-            </h3>
-            <p style={{ fontSize: 11.5, color: darkMode ? "#999" : "#666", margin: "0 0 12px" }}>
-              Pegá el texto del aviso de empleo para verificar qué términos clave te faltan incluir.
-            </p>
-            
-            <textarea 
-              className="cvb-input" 
-              rows={3} 
-              value={jobDescription} 
-              onChange={(e) => setJobDescription(e.target.value)} 
-              placeholder="Pegá aquí el texto de la oferta de trabajo..." 
-              style={{ marginBottom: 10 }}
-            />
-            
-            <button className="cvb-btn" onClick={analyzeJobKeywords} disabled={loadingATS || !jobDescription.trim()} style={{ width: "100%", padding: "8px", fontSize: 12, background: palette.surface, color: palette.primary, border: `1px solid ${palette.accent}` }}>
-              {loadingATS ? "Analizando palabras..." : "Buscar Coincidencias"}
-            </button>
-
-            {atsAnalysis && (
-              <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${cardBorder}` }}>
+          {/* MEDIDOR DE COMPLETITUD Y CAZADOR (Solo visibles si editamos el CV) */}
+          {activeDoc === 'cv' && (
+            <>
+              <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 18, marginBottom: 20 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 600 }}>Coincidencia con la oferta:</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: atsAnalysis.score > 60 ? "#4CAF50" : "#E53935" }}>{atsAnalysis.score}%</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    📊 Completitud del CV
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: palette.primary }}>
+                    {completeness}%
+                  </span>
                 </div>
+                <div style={{ width: "100%", height: 8, background: darkMode ? "#333" : "#E2E4E2", borderRadius: 4, overflow: "hidden" }}>
+                  <div style={{ width: `${completeness}%`, height: "100%", background: palette.primary, transition: "width 0.4s ease" }} />
+                </div>
+                <p style={{ fontSize: 11, color: darkMode ? "#888" : "#777", margin: "8px 0 0" }}>
+                  {completeness < 50 ? "Agregá más secciones para enriquecer tu perfil." : completeness < 85 ? "¡Vas muy bien! Sumá tus logros o métricas clave." : "¡Excelente nivel de detalle!"}
+                </p>
+              </div>
 
-                {atsAnalysis.missing.length > 0 && (
-                  <div style={{ marginBottom: 8 }}>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: "#E53935", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Te faltan agregar:</span>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {atsAnalysis.missing.map((w, i) => (
-                        <span key={i} style={{ background: darkMode ? "#3A1E1E" : "#FDEAE8", color: "#C45B52", fontSize: 11, padding: "2px 6px", borderRadius: 4 }}>+ {w}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 20, marginBottom: 20 }}>
+                <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 6px", color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px", display: "flex", alignItems: "center" }}>
+                  <IconTarget color={palette.primary} /> 🎯 Cazador de Palabras ATS
+                </h3>
+                <p style={{ fontSize: 11.5, color: darkMode ? "#999" : "#666", margin: "0 0 12px" }}>
+                  Pegá el texto del aviso de empleo para verificar qué términos clave te faltan incluir.
+                </p>
+                
+                <textarea 
+                  className="cvb-input" 
+                  rows={3} 
+                  value={jobDescription} 
+                  onChange={(e) => setJobDescription(e.target.value)} 
+                  placeholder="Pegá aquí el texto de la oferta de trabajo..." 
+                  style={{ marginBottom: 10 }}
+                />
+                
+                <button className="cvb-btn" onClick={analyzeJobKeywords} disabled={loadingATS || !jobDescription.trim()} style={{ width: "100%", padding: "8px", fontSize: 12, background: palette.surface, color: palette.primary, border: `1px solid ${palette.accent}` }}>
+                  {loadingATS ? "Analizando palabras..." : "Buscar Coincidencias"}
+                </button>
 
-                {atsAnalysis.matched.length > 0 && (
-                  <div>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: "#4CAF50", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Ya incluidas en tu CV:</span>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {atsAnalysis.matched.map((w, i) => (
-                        <span key={i} style={{ background: darkMode ? "#1E3A1E" : "#E8F5E9", color: "#2E7D32", fontSize: 11, padding: "2px 6px", borderRadius: 4 }}>✓ {w}</span>
-                      ))}
+                {atsAnalysis && (
+                  <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${cardBorder}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 600 }}>Coincidencia con la oferta:</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: atsAnalysis.score > 60 ? "#4CAF50" : "#E53935" }}>{atsAnalysis.score}%</span>
                     </div>
+
+                    {atsAnalysis.missing.length > 0 && (
+                      <div style={{ marginBottom: 8 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: "#E53935", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Te faltan agregar:</span>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                          {atsAnalysis.missing.map((w, i) => (
+                            <span key={i} style={{ background: darkMode ? "#3A1E1E" : "#FDEAE8", color: "#C45B52", fontSize: 11, padding: "2px 6px", borderRadius: 4 }}>+ {w}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {atsAnalysis.matched.length > 0 && (
+                      <div>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: "#4CAF50", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Ya incluidas en tu CV:</span>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                          {atsAnalysis.matched.map((w, i) => (
+                            <span key={i} style={{ background: darkMode ? "#1E3A1E" : "#E8F5E9", color: "#2E7D32", fontSize: 11, padding: "2px 6px", borderRadius: 4 }}>✓ {w}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </>
+          )}
 
-          {/* ESTILO Y COLOR */}
+          {/* ESTILO Y COLOR (Se aplica a AMBOS documentos) */}
           <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 20 }}>
             <div style={{ marginBottom: 12 }}>
-              <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 4px", color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>1. ESTILO</h3>
-              <p style={{ fontSize: 11.5, color: darkMode ? "#999" : "#777", margin: 0 }}>Ajustá la paleta de color, tipografía y la distribución de la hoja.</p>
+              <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 4px", color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>1. ESTILO GLOBAL</h3>
+              <p style={{ fontSize: 11.5, color: darkMode ? "#999" : "#777", margin: 0 }}>Ajustá la paleta, tipografía y la plantilla de diseño (aplica al CV y la Carta).</p>
             </div>
             
             <label className="cvb-label">Paletas Armónicas</label>
@@ -859,9 +901,8 @@ Si algún campo no figura, dejalo como string vacío.`;
               ))}
             </div>
 
-            {/* SELECTOR DE COLOR X/Y LIBRE */}
             <div style={{ marginBottom: 20, background: darkMode ? "#2D2D2D" : "#F9FAF8", border: `1px solid ${cardBorder}`, borderRadius: 10, padding: 12 }}>
-              <label className="cvb-label" style={{ marginBottom: 6 }}>Selector de Color Libre (Cualquier tono)</label>
+              <label className="cvb-label" style={{ marginBottom: 6 }}>Selector Libre (Cualquier tono)</label>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <input 
                   type="color" 
@@ -888,7 +929,7 @@ Si algún campo no figura, dejalo como string vacío.`;
               ))}
             </div>
 
-            <label className="cvb-label">Densidad / Espaciado de Hoja</label>
+            <label className="cvb-label">Densidad de Hoja</label>
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
               {DENSITIES.map(d => (
                 <button key={d.id} onClick={() => setDensity(d.id)} style={{ flex: 1, padding: "8px", fontSize: 12, borderRadius: 6, border: density === d.id ? `1px solid ${palette.primary}` : `1px solid ${cardBorder}`, background: density === d.id ? palette.surface : cardBg, color: density === d.id ? palette.primary : textColor, fontWeight: density === d.id ? 600 : 400 }}>
@@ -896,11 +937,8 @@ Si algún campo no figura, dejalo como string vacío.`;
                 </button>
               ))}
             </div>
-            <p style={{ fontSize: 11, color: darkMode ? "#999" : "#777", margin: "0 0 20px" }}>
-              Achicá o agrandá texto y márgenes para hacer entrar todo en 1 o 2 hojas.
-            </p>
 
-            <label className="cvb-label">Diseño de Hoja</label>
+            <label className="cvb-label" style={{ marginTop: 16 }}>Plantilla de Diseño</label>
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
               {TEMPLATES.map((t) => (
                 <div key={t.id} onClick={() => setTemplateId(t.id)} style={{ padding: "12px 14px", borderRadius: 8, background: templateId === t.id ? palette.surface : cardBg, border: templateId === t.id ? `1px solid ${palette.primary}` : `1px solid ${cardBorder}`, cursor: "pointer", transition: "all 0.2s" }}>
@@ -911,12 +949,21 @@ Si algún campo no figura, dejalo como string vacío.`;
             </div>
           </div>
 
-          {/* FORMULARIO DE EDICIÓN */}
+          {/* SWITCHER DE DOCUMENTOS (¿QUÉ ESTOY EDITANDO?) */}
+          <div className="doc-switcher">
+            <button className={`doc-switch-btn ${activeDoc === 'cv' ? 'active' : ''}`} onClick={() => setActiveDoc('cv')}>
+              📄 Curriculum Vitae
+            </button>
+            <button className={`doc-switch-btn ${activeDoc === 'letter' ? 'active' : ''}`} onClick={() => setActiveDoc('letter')}>
+              ✉️ Carta de Presentación
+            </button>
+          </div>
+
+          {/* FORMULARIOS: Se renderizan según el documento activo */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* SECCIÓN 2: DATOS PERSONALES CON OPCIÓN DE FOTO INTEGRADA */}
-            <Section title="2. Datos personales" hint="Información de contacto directa y foto profesional (opcional)." visible={visible.photo} onToggle={() => setVisible(v => ({ ...v, photo: !v.photo }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
-              
-              {/* CAMPO Y VISTA PREVIA DE FOTO RESTABLECIDOS */}
+            
+            {/* SIEMPRE MOSTRAMOS DATOS PERSONALES PORQUE EL HEADER LO COMPARTEN */}
+            <Section title="2. Datos personales" hint="Esta información encabezará tanto tu CV como la Carta." visible={visible.photo} onToggle={() => setVisible(v => ({ ...v, photo: !v.photo }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
                 {cv.personal.photo ? (
                   <img src={cv.personal.photo} alt="Perfil" style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover", border: `2px solid ${palette.primary}` }} />
@@ -940,132 +987,179 @@ Si algún campo no figura, dejalo como string vacío.`;
               <Row2><Field label="Ubicación" value={cv.personal.location} onChange={(v) => updatePersonal("location", v)} /><Field label="LinkedIn / URL" value={cv.personal.linkedin} onChange={(v) => updatePersonal("linkedin", v)} /></Row2>
             </Section>
 
-            <Section title="3. Perfil Profesional" hint="Sintetizá en 3 o 4 líneas tus fortalezas, especialidad y valor principal." visible={visible.summary} onToggle={() => setVisible(v => ({ ...v, summary: !v.summary }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
-              <textarea className="cvb-input" rows={4} value={cv.summary} onChange={(e) => setCv((c) => ({ ...c, summary: e.target.value }))} placeholder="Breve descripción de tu valor profesional..." />
-            </Section>
+            {/* SECCIONES EXCLUSIVAS DEL CV */}
+            {activeDoc === 'cv' && (
+              <>
+                <Section title="3. Perfil Profesional" hint="Sintetizá en 3 o 4 líneas tus fortalezas, especialidad y valor principal." visible={visible.summary} onToggle={() => setVisible(v => ({ ...v, summary: !v.summary }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+                  <textarea className="cvb-input" rows={4} value={cv.summary} onChange={(e) => setCv((c) => ({ ...c, summary: e.target.value }))} placeholder="Breve descripción de tu valor profesional..." />
+                </Section>
 
-            {/* SECCIÓN 4: EXPERIENCIA LABORAL CON ORDEN SOLICITADO */}
-            <Section title="4. Experiencia Laboral" hint="Detallá puestos pasados iniciando cada logro con verbos de acción e indicadores." visible={visible.experience} onToggle={() => setVisible(v => ({ ...v, experience: !v.experience }))} onAdd={addExperience} addLabel="+ Puesto" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
-              {cv.experience.map((exp, i) => (
-                <div key={exp.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase" }}>Puesto #{i + 1}</span>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button className="arrow-btn" onClick={() => moveExperience(i, "up")} disabled={i === 0}><IconArrowUp color={textColor} /></button>
-                      <button className="arrow-btn" onClick={() => moveExperience(i, "down")} disabled={i === cv.experience.length - 1}><IconArrowDown color={textColor} /></button>
-                    </div>
-                  </div>
-                  
-                  {/* 1. PUESTO Y EMPRESA */}
-                  <Row2><Field label="Puesto" value={exp.role} onChange={(v) => updateExperience(exp.id, "role", v)} /><Field label="Empresa" value={exp.company} onChange={(v) => updateExperience(exp.id, "company", v)} /></Row2>
+                <Section title="4. Experiencia Laboral" hint="Detallá puestos pasados iniciando cada logro con verbos de acción e indicadores." visible={visible.experience} onToggle={() => setVisible(v => ({ ...v, experience: !v.experience }))} onAdd={addExperience} addLabel="+ Puesto" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+                  {cv.experience.map((exp, i) => (
+                    <div key={exp.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase" }}>Puesto #{i + 1}</span>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button className="arrow-btn" onClick={() => moveExperience(i, "up")} disabled={i === 0}><IconArrowUp color={textColor} /></button>
+                          <button className="arrow-btn" onClick={() => moveExperience(i, "down")} disabled={i === cv.experience.length - 1}><IconArrowDown color={textColor} /></button>
+                        </div>
+                      </div>
+                      
+                      {/* 1. PUESTO Y EMPRESA */}
+                      <Row2><Field label="Puesto" value={exp.role} onChange={(v) => updateExperience(exp.id, "role", v)} /><Field label="Empresa" value={exp.company} onChange={(v) => updateExperience(exp.id, "company", v)} /></Row2>
+                      
+                      {/* 2. RESUMEN DEL ROL EN EL MEDIO */}
+                      <div style={{ marginTop: 8, marginBottom: 12 }}>
+                        <label className="cvb-label">Resumen del Rol / Descripción (Detalle libre)</label>
+                        <textarea 
+                          className="cvb-input" 
+                          rows={2} 
+                          value={exp.roleSummary || ""} 
+                          onChange={(e) => updateExperience(exp.id, "roleSummary", e.target.value)} 
+                          placeholder="Redactá en un párrafo el contexto y tus responsabilidades..." 
+                        />
+                      </div>
 
-                  {/* 2. RESUMEN DEL ROL UBICADO EN EL MEDIO DE PUESTO Y DESDE/HASTA */}
-                  <div style={{ marginTop: 8, marginBottom: 12 }}>
-                    <label className="cvb-label">Resumen del Rol / Descripción (Detalle libre)</label>
-                    <textarea 
-                      className="cvb-input" 
-                      rows={2} 
-                      value={exp.roleSummary || ""} 
-                      onChange={(e) => updateExperience(exp.id, "roleSummary", e.target.value)} 
-                      placeholder="Redactá en un párrafo el contexto y tus responsabilidades..." 
-                    />
-                  </div>
-                  
-                  {/* 3. DESDE Y HASTA */}
-                  <Row2><Field label="Desde" value={exp.start} onChange={(v) => updateExperience(exp.id, "start", v)} /><Field label="Hasta" value={exp.end} onChange={(v) => updateExperience(exp.id, "end", v)} /></Row2>
+                      {/* 3. DESDE Y HASTA */}
+                      <Row2><Field label="Desde" value={exp.start} onChange={(v) => updateExperience(exp.id, "start", v)} /><Field label="Hasta" value={exp.end} onChange={(v) => updateExperience(exp.id, "end", v)} /></Row2>
 
-                  {/* 4. LOGROS Y RESULTADOS */}
-                  <label className="cvb-label" style={{ marginTop: 16 }}>Logros y Resultados (Mejorar con IA)</label>
-                  {exp.bullets.map((b, bi) => (
-                    <div key={bi} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                      <input className="cvb-input" value={b} onChange={(e) => updateBullet(exp.id, bi, e.target.value)} placeholder="Ej: Reduje costos un 10%..." />
-                      <button className="cvb-btn" onClick={() => improveBulletAI(exp.id, bi, b)} style={{ background: palette.surface, color: palette.primary, padding: "0 12px" }} title="Optimizar frase con IA">
-                        {loadingAI === `${exp.id}-${bi}` ? "…" : <IconSparkles color={palette.primary} />}
-                      </button>
-                      <button className="cvb-btn" onClick={() => removeBullet(exp.id, bi)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 12px" }}>✕</button>
+                      {/* 4. LOGROS Y RESULTADOS */}
+                      <label className="cvb-label" style={{ marginTop: 16 }}>Logros y Resultados (Mejorar con IA)</label>
+                      {exp.bullets.map((b, bi) => (
+                        <div key={bi} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                          <input className="cvb-input" value={b} onChange={(e) => updateBullet(exp.id, bi, e.target.value)} placeholder="Ej: Reduje costos un 10%..." />
+                          <button className="cvb-btn" onClick={() => improveBulletAI(exp.id, bi, b)} style={{ background: palette.surface, color: palette.primary, padding: "0 12px" }} title="Optimizar frase con IA">
+                            {loadingAI === `${exp.id}-${bi}` ? "…" : <IconSparkles color={palette.primary} />}
+                          </button>
+                          <button className="cvb-btn" onClick={() => removeBullet(exp.id, bi)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 12px" }}>✕</button>
+                        </div>
+                      ))}
+                      <button className="cvb-btn" onClick={() => addBullet(exp.id)} style={{ background: "transparent", color: palette.primary, fontSize: 12, padding: "4px 0" }}>+ Agregar logro</button>
+                      {cv.experience.length > 1 && <button className="cvb-btn" onClick={() => removeExperience(exp.id)} style={{ background: "transparent", color: "#C45B52", fontSize: 12, marginLeft: 16 }}>Eliminar Puesto</button>}
                     </div>
                   ))}
-                  <button className="cvb-btn" onClick={() => addBullet(exp.id)} style={{ background: "transparent", color: palette.primary, fontSize: 12, padding: "4px 0" }}>+ Agregar logro</button>
-                  {cv.experience.length > 1 && <button className="cvb-btn" onClick={() => removeExperience(exp.id)} style={{ background: "transparent", color: "#C45B52", fontSize: 12, marginLeft: 16 }}>Eliminar Puesto</button>}
-                </div>
-              ))}
 
-              <div style={{ background: palette.surface, borderRadius: 8, padding: 14, marginTop: 12 }}>
-                <h4 style={{ fontSize: 11, fontWeight: 700, margin: "0 0 8px", color: palette.primary, textTransform: "uppercase" }}>Verbos de acción sugeridos:</h4>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {ATS_VERBS.map((verb, i) => (
-                    <span key={i} style={{ background: cardBg, border: `1px solid ${palette.accent}`, color: palette.secondary, fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 4 }}>{verb}</span>
-                  ))}
-                </div>
-              </div>
-            </Section>
-
-            <Section title="5. Educación" hint="Formación académica, títulos oficiales, cursos relevantes o certificaciones." visible={visible.education} onToggle={() => setVisible(v => ({ ...v, education: !v.education }))} onAdd={addEducation} addLabel="+ Estudio" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
-              {cv.education.map((ed, i) => (
-                <div key={ed.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase" }}>Estudio #{i + 1}</span>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button className="arrow-btn" onClick={() => moveEducation(i, "up")} disabled={i === 0}><IconArrowUp color={textColor} /></button>
-                      <button className="arrow-btn" onClick={() => moveEducation(i, "down")} disabled={i === cv.education.length - 1}><IconArrowDown color={textColor} /></button>
+                  <div style={{ background: palette.surface, borderRadius: 8, padding: 14, marginTop: 12 }}>
+                    <h4 style={{ fontSize: 11, fontWeight: 700, margin: "0 0 8px", color: palette.primary, textTransform: "uppercase" }}>Verbos de acción sugeridos:</h4>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {ATS_VERBS.map((verb, i) => (
+                        <span key={i} style={{ background: cardBg, border: `1px solid ${palette.accent}`, color: palette.secondary, fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 4 }}>{verb}</span>
+                      ))}
                     </div>
                   </div>
-                  <Field label="Título / Carrera" value={ed.degree} onChange={(v) => updateEducation(ed.id, "degree", v)} />
-                  <Field label="Institución" value={ed.institution} onChange={(v) => updateEducation(ed.id, "institution", v)} />
-                  <Row2><Field label="Desde" value={ed.start} onChange={(v) => updateEducation(ed.id, "start", v)} /><Field label="Hasta" value={ed.end} onChange={(v) => updateEducation(ed.id, "end", v)} /></Row2>
-                </div>
-              ))}
-            </Section>
+                </Section>
 
-            <Section title="Habilidades" hint="Competencias blandas y técnicas esenciales para tu puesto." visible={visible.skills} onToggle={() => setVisible(v => ({ ...v, skills: !v.skills }))} onAdd={addSkill} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
-              {cv.skills.map((s) => (
-                <div key={s.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                  <input className="cvb-input" value={s.name} onChange={(e) => updateSkillName(s.id, e.target.value)} placeholder="Ej. Liderazgo de equipos" />
-                  <button className="cvb-btn" onClick={() => removeSkill(s.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
-                </div>
-              ))}
-            </Section>
+                <Section title="5. Educación" hint="Formación académica, títulos oficiales, cursos relevantes o certificaciones." visible={visible.education} onToggle={() => setVisible(v => ({ ...v, education: !v.education }))} onAdd={addEducation} addLabel="+ Estudio" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+                  {cv.education.map((ed, i) => (
+                    <div key={ed.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase" }}>Estudio #{i + 1}</span>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button className="arrow-btn" onClick={() => moveEducation(i, "up")} disabled={i === 0}><IconArrowUp color={textColor} /></button>
+                          <button className="arrow-btn" onClick={() => moveEducation(i, "down")} disabled={i === cv.education.length - 1}><IconArrowDown color={textColor} /></button>
+                        </div>
+                      </div>
+                      <Field label="Título / Carrera" value={ed.degree} onChange={(v) => updateEducation(ed.id, "degree", v)} />
+                      <Field label="Institución" value={ed.institution} onChange={(v) => updateEducation(ed.id, "institution", v)} />
+                      <Row2><Field label="Desde" value={ed.start} onChange={(v) => updateEducation(ed.id, "start", v)} /><Field label="Hasta" value={ed.end} onChange={(v) => updateEducation(ed.id, "end", v)} /></Row2>
+                    </div>
+                  ))}
+                </Section>
 
-            <Section title="Herramientas / Software" hint="Programas, sistemas y tecnologías que manejás (Excel, SAP, etc.)." visible={visible.tools ?? true} onToggle={() => setVisible(v => ({ ...v, tools: !v.tools }))} onAdd={addTool} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
-              {cv.tools.map((t) => (
-                <div key={t.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                  <input className="cvb-input" value={t.name} onChange={(e) => updateToolName(t.id, e.target.value)} placeholder="Ej. Excel, Power BI, SAP, Amadeus" />
-                  <button className="cvb-btn" onClick={() => removeTool(t.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
-                </div>
-              ))}
-            </Section>
+                <Section title="Habilidades" hint="Competencias blandas y técnicas esenciales para tu puesto." visible={visible.skills} onToggle={() => setVisible(v => ({ ...v, skills: !v.skills }))} onAdd={addSkill} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+                  {cv.skills.map((s) => (
+                    <div key={s.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                      <input className="cvb-input" value={s.name} onChange={(e) => updateSkillName(s.id, e.target.value)} placeholder="Ej. Liderazgo de equipos" />
+                      <button className="cvb-btn" onClick={() => removeSkill(s.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
+                    </div>
+                  ))}
+                </Section>
 
-            <Section title="Idiomas" hint="Nivel de manejo oral y escrito de otras lenguas." visible={visible.languages} onToggle={() => setVisible(v => ({ ...v, languages: !v.languages }))} onAdd={addLanguage} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
-              {cv.languages.map((l) => (
-                <div key={l.id} style={{ marginBottom: 12 }}>
+                <Section title="Herramientas / Software" hint="Programas, sistemas y tecnologías que manejás (Excel, SAP, etc.)." visible={visible.tools ?? true} onToggle={() => setVisible(v => ({ ...v, tools: !v.tools }))} onAdd={addTool} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+                  {cv.tools.map((t) => (
+                    <div key={t.id} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                      <input className="cvb-input" value={t.name} onChange={(e) => updateToolName(t.id, e.target.value)} placeholder="Ej. Excel, Power BI, SAP, Amadeus" />
+                      <button className="cvb-btn" onClick={() => removeTool(t.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
+                    </div>
+                  ))}
+                </Section>
+
+                <Section title="Idiomas" hint="Nivel de manejo oral y escrito de otras lenguas." visible={visible.languages} onToggle={() => setVisible(v => ({ ...v, languages: !v.languages }))} onAdd={addLanguage} addLabel="+" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+                  {cv.languages.map((l) => (
+                    <div key={l.id} style={{ marginBottom: 12 }}>
+                      <Row2>
+                        <Field label="Idioma" value={l.name} onChange={(v) => updateLanguage(l.id, "name", v)} placeholder="Ej. Inglés" />
+                        <Field label="Nivel" value={l.level} onChange={(v) => updateLanguage(l.id, "level", v)} placeholder="Ej. Avanzado C1" />
+                      </Row2>
+                    </div>
+                  ))}
+                </Section>
+
+                {/* SECCIONES PERSONALIZADAS */}
+                <Section title="Secciones Personalizadas" hint="Agregá bloques libres con título a elección (Certificaciones, Voluntariados, Proyectos)." onAdd={addCustomSection} addLabel="+ Nueva Sección" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+                  {(cv.customSections || []).map((sec) => (
+                    <div key={sec.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 12, alignItems: "center" }}>
+                        <input className="cvb-input" style={{ fontWeight: 700, color: palette.primary }} value={sec.title} onChange={(e) => updateCustomSectionTitle(sec.id, e.target.value)} placeholder="Título de la Sección" />
+                        <button className="cvb-btn" onClick={() => removeCustomSection(sec.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 12px", height: 38 }}>✕</button>
+                      </div>
+
+                      <label className="cvb-label">Elementos / Ítems</label>
+                      {sec.items.map((item, idx) => (
+                        <div key={idx} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                          <input className="cvb-input" value={item} onChange={(e) => updateCustomItem(sec.id, idx, e.target.value)} placeholder="Ej. Certificación Scrum Master (2024)..." />
+                          <button className="cvb-btn" onClick={() => removeCustomItem(sec.id, idx)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
+                        </div>
+                      ))}
+                      <button className="cvb-btn" onClick={() => addCustomItem(sec.id)} style={{ background: "transparent", color: palette.primary, fontSize: 12, padding: "4px 0" }}>+ Agregar ítem</button>
+                    </div>
+                  ))}
+                </Section>
+              </>
+            )}
+
+            {/* SECCIONES EXCLUSIVAS DE LA CARTA DE PRESENTACIÓN */}
+            {activeDoc === 'letter' && (
+              <>
+                <Section title="Datos de Destino" hint="A quién va dirigida tu carta de presentación." darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
                   <Row2>
-                    <Field label="Idioma" value={l.name} onChange={(v) => updateLanguage(l.id, "name", v)} placeholder="Ej. Inglés" />
-                    <Field label="Nivel" value={l.level} onChange={(v) => updateLanguage(l.id, "level", v)} placeholder="Ej. Avanzado C1" />
+                    <Field label="Fecha" value={coverLetter.date} onChange={(v) => setCoverLetter(c => ({...c, date: v}))} placeholder="Ej. 24 de Octubre de 2024" />
+                    <Field label="Puesto al que aplicás" value={coverLetter.jobTitle} onChange={(v) => setCoverLetter(c => ({...c, jobTitle: v}))} placeholder="Ej. Analista de Marketing" />
                   </Row2>
-                </div>
-              ))}
-            </Section>
+                  <Row2>
+                    <Field label="Empresa" value={coverLetter.companyName} onChange={(v) => setCoverLetter(c => ({...c, companyName: v}))} placeholder="Nombre de la empresa" />
+                    <Field label="Dirigido a (Reclutador / Contacto)" value={coverLetter.recipientName} onChange={(v) => setCoverLetter(c => ({...c, recipientName: v}))} placeholder="Ej. Departamento de RRHH" />
+                  </Row2>
+                </Section>
 
-            {/* SECCIONES PERSONALIZADAS */}
-            <Section title="Secciones Personalizadas" hint="Agregá bloques libres con título a elección (Certificaciones, Voluntariados, Proyectos)." onAdd={addCustomSection} addLabel="+ Nueva Sección" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
-              {(cv.customSections || []).map((sec) => (
-                <div key={sec.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 12, alignItems: "center" }}>
-                    <input className="cvb-input" style={{ fontWeight: 700, color: palette.primary }} value={sec.title} onChange={(e) => updateCustomSectionTitle(sec.id, e.target.value)} placeholder="Título de la Sección" />
-                    <button className="cvb-btn" onClick={() => removeCustomSection(sec.id)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 12px", height: 38 }}>✕</button>
+                <Section title="Cuerpo de la Carta" hint="Redactá los párrafos principales. El membrete y la despedida se generan solos." darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
+                  
+                  {/* GENERADOR DE CARTA POR IA */}
+                  <div style={{ background: palette.surface, border: `1px solid ${palette.accent}`, padding: 16, borderRadius: 8, marginBottom: 16 }}>
+                    <h4 style={{ fontSize: 12, color: palette.primary, margin: "0 0 6px", display: "flex", alignItems: "center" }}><IconSparkles color={palette.primary}/> Auto-redactar con IA</h4>
+                    <p style={{ fontSize: 11, color: "#666", marginBottom: 10 }}>Usaremos la experiencia que cargaste en la pestaña "CV" para escribir una carta a medida para este puesto.</p>
+                    <button 
+                      className="cvb-btn" 
+                      onClick={handleGenerateCoverLetter} 
+                      disabled={loadingAI === 'letter' || !coverLetter.jobTitle || !coverLetter.companyName}
+                      style={{ padding: "8px 16px", fontSize: 12, background: palette.primary, color: "#fff", opacity: (loadingAI === 'letter' || !coverLetter.jobTitle) ? 0.6 : 1 }}
+                    >
+                      {loadingAI === 'letter' ? "Redactando carta..." : "Generar Carta con Inteligencia Artificial"}
+                    </button>
+                    {(!coverLetter.jobTitle || !coverLetter.companyName) && <span style={{ fontSize: 10, color: "#E53935", marginLeft: 10 }}>Completá el Puesto y Empresa arriba primero.</span>}
                   </div>
 
-                  <label className="cvb-label">Elementos / Ítems</label>
-                  {sec.items.map((item, idx) => (
-                    <div key={idx} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                      <input className="cvb-input" value={item} onChange={(e) => updateCustomItem(sec.id, idx, e.target.value)} placeholder="Ej. Certificación Scrum Master (2024)..." />
-                      <button className="cvb-btn" onClick={() => removeCustomItem(sec.id, idx)} style={{ background: "#FDEAE8", color: "#C45B52", padding: "0 10px" }}>✕</button>
-                    </div>
-                  ))}
-                  <button className="cvb-btn" onClick={() => addCustomItem(sec.id)} style={{ background: "transparent", color: palette.primary, fontSize: 12, padding: "4px 0" }}>+ Agregar ítem</button>
-                </div>
-              ))}
-            </Section>
+                  <textarea 
+                    className="cvb-input" 
+                    rows={14} 
+                    value={coverLetter.body} 
+                    onChange={(e) => setCoverLetter(c => ({...c, body: e.target.value}))} 
+                    placeholder="Estimado equipo...\n\nEscribo para..." 
+                    style={{ lineHeight: 1.6 }}
+                  />
+                </Section>
+              </>
+            )}
             
             <div style={{ textAlign: "center", padding: "24px 0 12px", color: darkMode ? "#999" : "#777", fontSize: 12.5, fontWeight: 400, display: "flex", alignItems: "center", justifyContent: "center" }}>
               Espero te sirva. Muchos éxitos. <IconHeart color={palette.secondary} />
@@ -1074,13 +1168,17 @@ Si algún campo no figura, dejalo como string vacío.`;
           </div>
         </div>
 
-        {/* PANEL DERECHO: VISTA PREVIA DEL CV */}
+        {/* PANEL DERECHO: VISTA PREVIA DEL CV O CARTA */}
         <div className="panel-right-mobile" style={{ flex: "2 1 520px", minWidth: 320, overflowX: "auto", display: "flex", justifyContent: "center", paddingBottom: 60 }}>
           <div className="print-area-container">
             <div className="print-area-wrapper">
               <div className="page-break-indicator" data-html2canvas-ignore="true" />
               <div ref={printRef} className="print-area">
-                <CVPreview data={cv} templateId={templateId} palette={palette} font={currentFontFamily} density={density} visible={visible} />
+                {activeDoc === 'cv' ? (
+                  <CVPreview data={cv} templateId={templateId} palette={palette} font={currentFontFamily} density={density} visible={visible} />
+                ) : (
+                  <CoverLetterPreview cvData={cv} letterData={coverLetter} templateId={templateId} palette={palette} font={currentFontFamily} density={density} />
+                )}
               </div>
             </div>
           </div>
@@ -1088,7 +1186,7 @@ Si algún campo no figura, dejalo como string vacío.`;
 
       </div>
 
-      {/* MODAL IMPORTAR CV EXISTENTE */}
+      {/* MODAL IMPORTAR CV EXISTENTE (CON POSICIÓN FIXED Y CENTRADA) */}
       {isImportModalOpen && (
         <div className="modal-overlay" onClick={() => setIsImportModalOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -1197,7 +1295,138 @@ function Field({ label, value, onChange, placeholder }) { return (<div style={{ 
 function Row2({ children }) { return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%" }}>{children}</div>; }
 function skillNames(items) { return (items || []).filter((s) => s && s.name && s.name.trim()).map((s) => s.name.trim()); }
 
-/* ---------- ENRUTADOR DE PLANTILLAS ---------- */
+
+/* ==========================================================================
+   VISTAS PREVIAS DE LA CARTA DE PRESENTACIÓN (HEREDAN ESTILO DEL CV)
+   ========================================================================== */
+function CoverLetterPreview({ cvData, letterData, templateId, palette, font, density }) {
+  if (templateId === "nordico") return <LetterNordico cvData={cvData} letter={letterData} palette={palette} font={font} density={density} />;
+  if (templateId === "bloque") return <LetterBloque cvData={cvData} letter={letterData} palette={palette} font={font} density={density} />;
+  if (templateId === "ats") return <LetterATS cvData={cvData} letter={letterData} density={density} />;
+  return <LetterNordico cvData={cvData} letter={letterData} palette={palette} font={font} density={density} />;
+}
+
+/* CARTA - NÓRDICO */
+function LetterNordico({ cvData, letter, palette, font, density }) {
+  const paddings = density === "compact" ? "40px 48px 30px" : density === "spacious" ? "64px 72px 48px" : "56px 64px 40px";
+  const sectionGap = density === "compact" ? 22 : density === "spacious" ? 42 : 32;
+
+  return (
+    <div style={{ fontFamily: font, background: "#fff", color: palette.textDark, padding: paddings, boxSizing: "border-box", minHeight: "1123px" }}>
+      {/* HEADER IDENTICO AL CV */}
+      <div className="page-block" style={{ borderBottom: `1px solid ${palette.accent}`, paddingBottom: density === "compact" ? 16 : 24, marginBottom: sectionGap }}>
+        <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+          {cvData.personal.photo && (
+            <img src={cvData.personal.photo} alt="Perfil" style={{ width: density === "compact" ? 68 : 80, height: density === "compact" ? 68 : 80, borderRadius: "50%", objectFit: "cover" }} />
+          )}
+          <div>
+            <h1 style={{ fontSize: density === "compact" ? 26 : 30, fontWeight: 600, margin: "0 0 4px", color: palette.textDark, letterSpacing: "-0.5px" }}>{cvData.personal.name || "Nombre Apellido"}</h1>
+            <p style={{ fontSize: density === "compact" ? 14 : 15, color: palette.primary, fontWeight: 500, margin: "0 0 10px" }}>{cvData.personal.title}</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", fontSize: density === "compact" ? 11.5 : 12, color: palette.secondary, fontWeight: 400 }}>
+              {cvData.personal.location && <span><IconPin color={palette.secondary} size={12} />{cvData.personal.location}</span>}
+              {cvData.personal.phone && <span><IconPhone color={palette.secondary} size={12} />{cvData.personal.phone}</span>}
+              {cvData.personal.email && <span><IconMail color={palette.secondary} size={12} />{cvData.personal.email}</span>}
+              {cvData.personal.linkedin && <span><IconLink color={palette.secondary} size={12} />{cvData.personal.linkedin}</span>}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CUERPO DE LA CARTA */}
+      <div style={{ fontSize: density === "compact" ? 12 : 13.5, lineHeight: 1.8, color: "#333", maxWidth: "90%", paddingTop: 20 }}>
+        <p style={{ margin: "0 0 30px", color: "#666" }}>{letter.date}</p>
+        
+        <div style={{ marginBottom: 40 }}>
+          <p style={{ margin: "0 0 2px", fontWeight: 600, color: palette.textDark }}>{letter.recipientName || "A quien corresponda,"}</p>
+          <p style={{ margin: "0 0 2px", fontWeight: 500 }}>{letter.companyName}</p>
+          <p style={{ margin: 0, color: palette.secondary }}>{letter.jobTitle && `Ref: Postulación para ${letter.jobTitle}`}</p>
+        </div>
+
+        <div style={{ whiteSpace: "pre-wrap" }}>
+          {letter.body}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* CARTA - BLOQUE SUTIL */
+function LetterBloque({ cvData, letter, palette, font, density }) {
+  const paddingsLeft = density === "compact" ? "36px 24px" : "48px 32px";
+  const paddingsRight = density === "compact" ? "36px 30px" : "48px 40px";
+  const sectionGap = density === "compact" ? 24 : 36;
+
+  return (
+    <div style={{ fontFamily: font, display: "flex", minHeight: "1123px", background: "#fff" }}>
+      {/* SIDEBAR IDENTICO AL CV */}
+      <div style={{ width: "32%", background: palette.surface, padding: paddingsLeft, color: palette.textDark, display: "flex", flexDirection: "column" }}>
+        <div className="page-block" style={{ textAlign: "center", marginBottom: sectionGap }}>
+          {cvData.personal.photo && (
+             <img src={cvData.personal.photo} alt="Perfil" style={{ width: density === "compact" ? 80 : 100, height: density === "compact" ? 80 : 100, borderRadius: "50%", objectFit: "cover", marginBottom: 14 }} />
+          )}
+          <h1 style={{ fontSize: density === "compact" ? 18 : 20, fontWeight: 700, margin: "0 0 6px", lineHeight: 1.1 }}>{cvData.personal.name || "Nombre Apellido"}</h1>
+          <p style={{ fontSize: 12, fontWeight: 500, color: palette.primary, margin: 0 }}>{cvData.personal.title}</p>
+        </div>
+
+        <div className="page-block" style={{ marginBottom: sectionGap }}>
+          <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 10, letterSpacing: "1px" }}>Contacto</h3>
+          {cvData.personal.location && <p style={{ fontSize: 11, margin: "0 0 6px" }}><IconPin color={palette.secondary} size={12} />{cvData.personal.location}</p>}
+          {cvData.personal.phone && <p style={{ fontSize: 11, margin: "0 0 6px" }}><IconPhone color={palette.secondary} size={12} />{cvData.personal.phone}</p>}
+          {cvData.personal.email && <p style={{ fontSize: 11, margin: "0 0 6px", wordBreak: "break-all" }}><IconMail color={palette.secondary} size={12} />{cvData.personal.email}</p>}
+          {cvData.personal.linkedin && <p style={{ fontSize: 11, margin: "0 0 6px", wordBreak: "break-all" }}><IconLink color={palette.secondary} size={12} />{cvData.personal.linkedin}</p>}
+        </div>
+      </div>
+      
+      {/* CUERPO DE LA CARTA */}
+      <div style={{ width: "68%", padding: paddingsRight, color: palette.textDark }}>
+        <div style={{ fontSize: density === "compact" ? 12 : 13.5, lineHeight: 1.8, color: "#333", paddingTop: 10 }}>
+          <p style={{ margin: "0 0 30px", color: "#666" }}>{letter.date}</p>
+          
+          <div style={{ marginBottom: 40, borderLeft: `3px solid ${palette.accent}`, paddingLeft: 14 }}>
+            <p style={{ margin: "0 0 2px", fontWeight: 600, color: palette.textDark }}>{letter.recipientName || "A quien corresponda,"}</p>
+            <p style={{ margin: "0 0 2px", fontWeight: 500 }}>{letter.companyName}</p>
+            <p style={{ margin: 0, color: palette.secondary }}>{letter.jobTitle && `Asunto: Aplicación para ${letter.jobTitle}`}</p>
+          </div>
+
+          <div style={{ whiteSpace: "pre-wrap" }}>
+            {letter.body}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* CARTA - ATS ESTRICTO */
+function LetterATS({ cvData, letter, density }) {
+  return (
+    <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#222", padding: density === "compact" ? "40px" : "60px", fontSize: density === "compact" ? 12 : 13, lineHeight: 1.6, background: "#fff", minHeight: "1123px" }}>
+      {/* HEADER ATS */}
+      <div className="page-block" style={{ marginBottom: 40 }}>
+        <h1 style={{ fontSize: density === "compact" ? 16 : 18, fontWeight: 700, margin: "0 0 4px", textAlign: "center", textTransform: "uppercase" }}>{cvData.personal.name || "NOMBRE APELLIDO"}</h1>
+        <p style={{ margin: "0 0 6px", textAlign: "center", fontSize: 12.5 }}>{cvData.personal.title}</p>
+        <p style={{ margin: "0 0 16px", fontSize: 11, textAlign: "center", color: "#555" }}>{[cvData.personal.location, cvData.personal.email, cvData.personal.phone, cvData.personal.linkedin].filter(Boolean).join(" | ")}</p>
+        <hr style={{ border: "none", borderBottom: "1px solid #000" }} />
+      </div>
+      
+      <div style={{ marginBottom: 30 }}>
+        <p style={{ margin: "0 0 20px" }}>{letter.date}</p>
+        <p style={{ margin: "0 0 2px", fontWeight: 600 }}>{letter.recipientName || "Departamento de Selección"}</p>
+        <p style={{ margin: "0 0 2px" }}>{letter.companyName}</p>
+        <p style={{ margin: 0, fontStyle: "italic" }}>{letter.jobTitle && `Ref: ${letter.jobTitle}`}</p>
+      </div>
+
+      <div style={{ whiteSpace: "pre-wrap", textAlign: "justify" }}>
+        {letter.body}
+      </div>
+    </div>
+  );
+}
+
+
+/* ==========================================================================
+   VISTAS PREVIAS DEL CURRICULUM VITAE
+   ========================================================================== */
 function CVPreview({ data, templateId, palette, font, density, visible }) {
   if (templateId === "nordico") return <TplNordico data={data} palette={palette} font={font} density={density} visible={visible} />;
   if (templateId === "bloque") return <TplBloque data={data} palette={palette} font={font} density={density} visible={visible} />;
