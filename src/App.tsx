@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 
 /* ---------- HELPERS ---------- */
 const uid = () => Math.random().toString(36).slice(2, 10);
-const emptyExperience = () => ({ id: uid(), company: "", role: "", start: "", end: "", current: false, bullets: [""] });
+const emptyExperience = () => ({ id: uid(), company: "", role: "", start: "", end: "", current: false, roleSummary: "", bullets: [""] });
 const emptyEducation = () => ({ id: uid(), institution: "", degree: "", start: "", end: "" });
 const emptyLanguage = () => ({ id: uid(), name: "", level: "" });
 const emptySkill = () => ({ id: uid(), name: "", level: 4 });
@@ -37,7 +37,7 @@ function calculateCompleteness(cv) {
   if (cv.personal.title) score += 10;
   if (cv.personal.email && cv.personal.phone) score += 10;
   if (cv.summary && cv.summary.length > 25) score += 15;
-  if (cv.experience.some(e => e.role && e.company && e.bullets.some(b => b.length > 5))) score += 25;
+  if (cv.experience.some(e => e.role && e.company && (e.roleSummary || e.bullets.some(b => b.length > 5)))) score += 25;
   if (cv.education.some(ed => ed.degree && ed.institution)) score += 10;
   if (cv.skills.some(s => s.name.trim())) score += 10;
   if (cv.tools.some(t => t.name.trim())) score += 10;
@@ -56,7 +56,6 @@ const IconEye = ({ color = "currentColor", size = 14 }) => (<svg width={size} he
 const IconEyeOff = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle" }}><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/></svg>);
 const IconArrowUp = ({ color = "currentColor", size = 12 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>);
 const IconArrowDown = ({ color = "currentColor", size = 12 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>);
-const IconPalette = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 6 }}><circle cx="13.5" cy="6.5" r=".5" fill={color}/><circle cx="17.5" cy="10.5" r=".5" fill={color}/><circle cx="8.5" cy="7.5" r=".5" fill={color}/><circle cx="6.5" cy="12.5" r=".5" fill={color}/><path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10c1.38 0 2.5-1.12 2.5-2.5 0-.61-.23-1.21-.64-1.67-.38-.43-.6-.98-.6-1.58 0-1.38 1.12-2.5 2.5-2.5H18c2.21 0 4-1.79 4-4 0-4.97-4.48-9-10-9z"/></svg>);
 const IconHeart = ({ color = "#C47165", size = 15 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginLeft: 6 }}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>);
 const IconTrash = ({ color = "#888", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 4 }}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>);
 const IconTarget = ({ color = "currentColor", size = 14 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 6 }}><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>);
@@ -126,14 +125,19 @@ function generateFallbackBullet(text) {
   return `${randomVerb} ${clean.charAt(0).toLowerCase() + clean.slice(1)} alcanzando un alto estándar de eficiencia.`;
 }
 
-/* ---------- API IA ---------- */
-async function callClaude(prompt) {
+/* ---------- API IA NATIVA ---------- */
+async function callClaude(promptOrMessages) {
   const API_KEY = import.meta.env?.VITE_ANTHROPIC_API_KEY || ""; 
   if (!API_KEY) throw new Error("NO_KEY");
+
+  const content = typeof promptOrMessages === "string" 
+    ? [{ role: "user", content: promptOrMessages }]
+    : [{ role: "user", content: promptOrMessages }];
+
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": API_KEY, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-    body: JSON.stringify({ model: "claude-3-5-sonnet-20240620", max_tokens: 800, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: "claude-3-5-sonnet-20240620", max_tokens: 1500, messages: content }),
   });
   const data = await response.json();
   if (data.error) throw new Error(data.error.message || "Error API");
@@ -166,6 +170,7 @@ export default function App() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [rawCvText, setRawCvText] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
+  const [pdfBase64, setPdfBase64] = useState(null);
   const [loadingImport, setLoadingImport] = useState(false);
 
   const saveTimer = useRef(null);
@@ -204,6 +209,8 @@ export default function App() {
       setAtsAnalysis(null);
       setJobDescription("");
       setDensity("normal");
+      setRawCvText("");
+      setSelectedFile(null);
     }
   };
 
@@ -238,121 +245,134 @@ export default function App() {
   const updateCustomItem = (secId, idx, val) => setCv(c => ({ ...c, customSections: (c.customSections || []).map(s => s.id === secId ? { ...s, items: s.items.map((item, i) => i === idx ? val : item) } : s) }));
   const removeCustomItem = (secId, idx) => setCv(c => ({ ...c, customSections: (c.customSections || []).map(s => s.id === secId ? { ...s, items: s.items.filter((_, i) => i !== idx) } : s) }));
 
-  /* EXTRACCIÓN AUTOMÁTICA DE DATOS CON IA DESDE TEXTO COPIADO O PDF */
-  const handleExtractCvData = async () => {
-    let contentToAnalyze = rawCvText.trim();
-    
-    // Si no hay texto directo pero sí hay un archivo cargado, leemos primero
-    if (!contentToAnalyze && selectedFile) {
-      contentToAnalyze = `Archivo adjunto: ${selectedFile.name}`;
-    }
-
-    if (!contentToAnalyze) return;
-    setLoadingImport(true);
-
-    try {
-      const prompt = `Analizá el siguiente texto de un CV y extraé todos los datos estructurados.
-      Devolvé ÚNICAMENTE un JSON estricto con esta forma (sin comillas extra ni explicaciones):
-      {
-        "personal": { "name": "", "title": "", "email": "", "phone": "", "location": "", "linkedin": "" },
-        "summary": "",
-        "experience": [{ "role": "", "company": "", "start": "", "end": "", "bullets": [""] }],
-        "education": [{ "degree": "", "institution": "", "start": "", "end": "" }],
-        "skills": [{ "name": "" }],
-        "tools": [{ "name": "" }],
-        "languages": [{ "name": "", "level": "" }]
-      }
-      Si algún campo no figura, dejalo como string vacío.
-      Texto a analizar: "${contentToAnalyze.replace(/"/g, "'")}"`;
-
-      const responseText = await callClaude(prompt);
-      
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("JSON_NOT_FOUND");
-
-      const parsed = JSON.parse(jsonMatch[0]);
-
-      setCv({
-        ...emptyCV(),
-        personal: { ...emptyCV().personal, ...(parsed.personal || {}) },
-        summary: parsed.summary || "",
-        experience: parsed.experience && parsed.experience.length ? parsed.experience.map(e => ({ id: uid(), role: e.role || "", company: e.company || "", start: e.start || "", end: e.end || "", bullets: e.bullets && e.bullets.length ? e.bullets : [""] })) : [emptyExperience()],
-        education: parsed.education && parsed.education.length ? parsed.education.map(ed => ({ id: uid(), degree: ed.degree || "", institution: ed.institution || "", start: ed.start || "", end: ed.end || "" })) : [emptyEducation()],
-        skills: parsed.skills && parsed.skills.length ? parsed.skills.map(s => ({ id: uid(), name: typeof s === 'string' ? s : s.name || "" })) : [emptySkill()],
-        tools: parsed.tools && parsed.tools.length ? parsed.tools.map(t => ({ id: uid(), name: typeof t === 'string' ? t : t.name || "" })) : [emptyTool()],
-        languages: parsed.languages && parsed.languages.length ? parsed.languages.map(l => ({ id: uid(), name: l.name || "", level: l.level || "" })) : [emptyLanguage()],
-        customSections: []
-      });
-
-    } catch (e) {
-      // PLAN B: Pegamos el texto recuperado directo en el perfil profesional para que la persona no pierda la info
-      setCv(prev => ({
-        ...prev,
-        summary: contentToAnalyze
-      }));
-      alert("Integramos la información rescatada en la sección de Perfil Profesional para que puedas estructurarla a gusto.");
-    }
-    
+  /* APLICADOR SEGURO DE DATOS DE CV */
+  const applyParsedCvData = (parsed) => {
+    setCv({
+      ...emptyCV(),
+      personal: { ...emptyCV().personal, ...(parsed.personal || {}) },
+      summary: parsed.summary || "",
+      experience: parsed.experience && parsed.experience.length ? parsed.experience.map(e => ({ id: uid(), role: e.role || "", company: e.company || "", start: e.start || "", end: e.end || "", roleSummary: e.roleSummary || "", bullets: e.bullets && e.bullets.length ? e.bullets : [""] })) : [emptyExperience()],
+      education: parsed.education && parsed.education.length ? parsed.education.map(ed => ({ id: uid(), degree: ed.degree || "", institution: ed.institution || "", start: ed.start || "", end: ed.end || "" })) : [emptyEducation()],
+      skills: parsed.skills && parsed.skills.length ? parsed.skills.map(s => ({ id: uid(), name: typeof s === 'string' ? s : s.name || "" })) : [emptySkill()],
+      tools: parsed.tools && parsed.tools.length ? parsed.tools.map(t => ({ id: uid(), name: typeof t === 'string' ? t : t.name || "" })) : [emptyTool()],
+      languages: parsed.languages && parsed.languages.length ? parsed.languages.map(l => ({ id: uid(), name: l.name || "", level: l.level || "" })) : [emptyLanguage()],
+      customSections: []
+    });
     setIsImportModalOpen(false);
     setRawCvText("");
     setSelectedFile(null);
+    setPdfBase64(null);
     setShowLanding(false);
-    setLoadingImport(false);
   };
 
-  /* LECTOR DE ARCHIVOS MEJORADO CON SOPORTE COMPLETO PDF */
-  const handleFileUpload = async (e) => {
+  /* SELECCIÓN DE ARCHIVO Y LECTURA INMEDIATA */
+  const handleFileUpload = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
+    
+    e.target.value = null; 
+
+    if (file.name.endsWith('.json')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          applyParsedCvData(JSON.parse(event.target.result));
+        } catch(err) {
+          alert("El archivo JSON no es un respaldo válido.");
+        }
+      };
+      reader.readAsText(file);
+      return;
+    }
 
     setSelectedFile(file);
-    setRawCvText(`Leyendo el contenido de ${file.name}...`);
+    setRawCvText(`[Archivo seleccionado: ${file.name}]\n\nHacé clic en "Extraer y Auto-completar CV" para procesarlo con IA.`);
+  };
 
-    if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-      setLoadingImport(true);
-      try {
-        if (!window.pdfjsLib) {
-          await new Promise((resolve, reject) => {
-            const script = document.createElement("script");
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js";
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
+  /* EXTRACCIÓN AUTOMÁTICA DE DATOS CON IA */
+  const handleExtractCvData = async () => {
+    if (!rawCvText.trim() && !selectedFile) return;
+
+    setLoadingImport(true);
+
+    try {
+      const API_KEY = import.meta.env?.VITE_ANTHROPIC_API_KEY || "";
+      if (!API_KEY) throw new Error("NO_KEY");
+
+      const jsonPrompt = `Analizá el CV adjunto (en texto o documento) y extraé todos los datos estructurados.
+Devolvé ÚNICAMENTE un JSON estricto con esta forma:
+{
+  "personal": { "name": "", "title": "", "email": "", "phone": "", "location": "", "linkedin": "" },
+  "summary": "",
+  "experience": [{ "role": "", "company": "", "start": "", "end": "", "roleSummary": "", "bullets": [""] }],
+  "education": [{ "degree": "", "institution": "", "start": "", "end": "" }],
+  "skills": [{ "name": "" }],
+  "tools": [{ "name": "" }],
+  "languages": [{ "name": "", "level": "" }]
+}
+Si algún campo no figura, dejalo como string vacío.`;
+
+      let promptPayload;
+
+      if (selectedFile && selectedFile.type === "application/pdf") {
+        const base64Data = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.readAsDataURL(selectedFile);
+        });
+        
+        promptPayload = [
+          {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: base64Data
+            }
+          },
+          { type: "text", text: jsonPrompt }
+        ];
+      } else {
+        let textToProcess = rawCvText;
+        if (selectedFile && (selectedFile.name.endsWith('.txt') || selectedFile.name.endsWith('.md'))) {
+          textToProcess = await new Promise((resolve) => {
+             const reader = new FileReader();
+             reader.onload = () => resolve(reader.result);
+             reader.readAsText(selectedFile);
           });
-          window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
         }
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        let fullText = "";
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const textContent = await page.getTextContent();
-          fullText += textContent.items.map(item => item.str).join(" ") + "\n";
-        }
-        if (fullText.trim().length > 10) {
-          setRawCvText(fullText);
-        } else {
-          setRawCvText("");
-          alert("No pudimos extraer texto directamente (puede ser un PDF escaneado como foto). Podés pegar el texto manualmente.");
-        }
-      } catch (err) {
-        const reader = new FileReader();
-        reader.onload = (event) => setRawCvText(event.target.result);
-        reader.readAsText(file);
+        promptPayload = `${jsonPrompt}\n\nTexto a analizar: "${textToProcess.replace(/"/g, "'")}"`;
       }
-      setLoadingImport(false);
-    } else {
-      const reader = new FileReader();
-      reader.onload = (event) => setRawCvText(event.target.result);
-      reader.readAsText(file);
+
+      const responseText = await callClaude(promptPayload);
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("Formato JSON no encontrado");
+      
+      const parsed = JSON.parse(jsonMatch[0]);
+      applyParsedCvData(parsed);
+
+    } catch (e) {
+      if (e.message === "NO_KEY") {
+        alert("Atención: No detectamos tu API Key de Anthropic. El texto se guardará en tu resumen provisoriamente.");
+      } else {
+        alert("Ocurrió un error al procesar el archivo. Te pegamos el texto en tu perfil para que lo acomodes a mano.");
+      }
+      
+      if (rawCvText && !rawCvText.startsWith("[Archivo seleccionado:")) {
+        setCv(c => ({ ...c, summary: rawCvText }));
+        setIsImportModalOpen(false);
+        setShowLanding(false);
+      }
     }
+    
+    setLoadingImport(false);
   };
 
   const analyzeEntireCV = async () => {
     setIsAiModalOpen(true);
     setAiFeedback("ANALYZING");
     try {
-      const cvText = `Nombre: ${cv.personal.name}\nPerfil: ${cv.summary}\nExperiencia: ${cv.experience.map(e => `${e.role} en ${e.company}. Logros: ${e.bullets.join('; ')}`).join(' | ')}\nEducación: ${cv.education.map(ed => ed.degree).join(', ')}\nHabilidades: ${cv.skills.map(s=>s.name).join(', ')}\nHerramientas: ${cv.tools.map(t=>t.name).join(', ')}`;
+      const cvText = `Nombre: ${cv.personal.name}\nPerfil: ${cv.summary}\nExperiencia: ${cv.experience.map(e => `${e.role} en ${e.company}. Resumen: ${e.roleSummary || ''}. Logros: ${e.bullets.join('; ')}`).join(' | ')}\nEducación: ${cv.education.map(ed => ed.degree).join(', ')}\nHabilidades: ${cv.skills.map(s=>s.name).join(', ')}\nHerramientas: ${cv.tools.map(t=>t.name).join(', ')}`;
       const prompt = `Actuá como un Reclutador experto. Analizá este CV y devolvé tu feedback EXACTAMENTE con esta estructura (usá formato markdown):\n\n### Puntos Fuertes\n(1 aspecto positivo)\n\n### Oportunidades de Mejora\n(2 consejos prácticos sobre redacción o estructura)\n\n### Recomendación Clave\n(Un consejo profesional breve).\n\nSé directo. CV: ${cvText}`;
       const analysis = await callClaude(prompt);
       setAiFeedback(analysis);
@@ -367,7 +387,7 @@ export default function App() {
     if (!jobDescription.trim()) return;
     setLoadingATS(true);
     try {
-      const cvFullText = `${cv.summary} ${cv.experience.map(e=> `${e.role} ${e.company} ${e.bullets.join(' ')}`).join(' ')} ${cv.skills.map(s=>s.name).join(' ')} ${cv.tools.map(t=>t.name).join(' ')}`.toLowerCase();
+      const cvFullText = `${cv.summary} ${cv.experience.map(e=> `${e.role} ${e.company} ${e.roleSummary || ''} ${e.bullets.join(' ')}`).join(' ')} ${cv.skills.map(s=>s.name).join(' ')} ${cv.tools.map(t=>t.name).join(' ')}`.toLowerCase();
       
       const prompt = `Analizá la siguiente oferta laboral y extraé entre 5 y 8 PALABRAS CLAVE PROFESIONALES RELEVANTES (habilidades técnicas, conocimientos del sector, herramientas o metodologías).
       REGLAS STRICTAS:
@@ -376,9 +396,8 @@ export default function App() {
       Devolvé ÚNICAMENTE un formato JSON estricto: {"keywords": ["palabra1", "palabra2"]}\n\nOferta Laboral: "${jobDescription}"`;
       
       const responseText = await callClaude(prompt);
-      
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("JSON_NOT_FOUND");
+      if (!jsonMatch) throw new Error("Formato JSON no encontrado");
 
       const parsed = JSON.parse(jsonMatch[0]);
       const extractedKeywords = parsed.keywords || [];
@@ -421,13 +440,6 @@ export default function App() {
       updateBullet(expId, idx, generateFallbackBullet(text));
     }
     setLoadingAI(null);
-  };
-
-  const handlePhotoUpload = (file) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => updatePersonal("photo", reader.result);
-    reader.readAsDataURL(file);
   };
 
   const handleDownloadPdf = () => {
@@ -475,6 +487,26 @@ export default function App() {
           .landing-btn-main { background: ${palette.primary}; color: #fff; padding: 16px 36px; border-radius: 30px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.12); }
           .landing-btn-main:hover { opacity: 0.92; transform: translateY(-2px); }
           .landing-card { background: #fff; border: 1px solid #E2E4E2; border-radius: 16px; padding: 24px; flex: 1; min-width: 240px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+          
+          .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            backdrop-filter: blur(4px);
+          }
+          .modal-content {
+            background: #FFFFFF;
+            border: 1px solid #E2E4E2;
+            padding: 32px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 520px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+          }
         `}</style>
         
         <div style={{ padding: "20px 32px", background: "#E8E2D5", borderBottom: "1px solid #D8D0C0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -553,7 +585,7 @@ export default function App() {
           Impulso CV Premium • Servicio Gratuito para Generación Profesional de Currículum
         </div>
 
-        {/* MODAL IMPORTAR CV EN LANDING */}
+        {/* MODAL IMPORTAR CV EN LA LANDING */}
         {isImportModalOpen && (
           <div className="modal-overlay" onClick={() => setIsImportModalOpen(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -569,21 +601,37 @@ export default function App() {
               </p>
 
               <div style={{ marginBottom: 12 }}>
-                <label className="cvb-label" style={{ color: "#555" }}>Subir Archivo (.PDF / .TXT / .MD)</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 6 }}>Subir Archivo (.PDF / .TXT / .MD)</label>
                 <input type="file" accept=".pdf,.txt,.md" onChange={handleFileUpload} style={{ fontSize: 12, color: "#222" }} />
               </div>
 
-              <label className="cvb-label" style={{ color: "#555" }}>o Pegá el Texto de tu CV:</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 6 }}>o Pegá el Texto de tu CV:</label>
               <textarea 
-                className="cvb-input" 
                 rows={8} 
                 value={rawCvText} 
-                onChange={(e) => setRawCvText(e.target.value)} 
+                onChange={(e) => {
+                  setRawCvText(e.target.value);
+                  if (selectedFile) setSelectedFile(null);
+                }} 
                 placeholder="Nombre, Experiencia laboral, Educación, Habilidades..." 
-                style={{ marginBottom: 16, background: "#FFF", color: "#222", border: "1px solid #CCC" }}
+                style={{ width: "100%", padding: "10px", borderRadius: 6, border: "1px solid #CCC", fontSize: 13, marginBottom: 16, background: "#FFF", color: "#222" }}
               />
 
-              <button className="cvb-btn" onClick={handleExtractCvData} disabled={loadingImport || (!rawCvText.trim() && !selectedFile)} style={{ width: "100%", padding: "12px", background: palette.primary, color: "#fff", fontSize: 13, fontWeight: 600 }}>
+              <button 
+                onClick={handleExtractCvData} 
+                disabled={loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)} 
+                style={{ 
+                  width: "100%", 
+                  padding: "12px", 
+                  background: (loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)) ? "#888" : palette.primary, 
+                  color: "#fff", 
+                  border: "none", 
+                  borderRadius: 6, 
+                  fontSize: 13, 
+                  fontWeight: 600, 
+                  cursor: (loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)) ? "not-allowed" : "pointer"
+                }}
+              >
                 {loadingImport ? "Procesando e integrando datos..." : "Extraer y Auto-completar CV"}
               </button>
             </div>
@@ -608,7 +656,6 @@ export default function App() {
         .print-area-wrapper { position: relative; }
         .print-area { width: 794px; min-height: 1123px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin: 0 auto; }
         
-        /* LÍNEA GUÍA DE CORTE DE HOJA A4 */
         .page-break-indicator {
           position: absolute;
           top: 1123px;
@@ -642,12 +689,11 @@ export default function App() {
         .arrow-btn { background: ${darkMode ? '#333' : '#EAECE8'}; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; display:flex; align-items:center; }
         .arrow-btn:hover { background: ${darkMode ? '#444' : '#D5D7D3'}; }
         
-        .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
-        .modal-content { background: ${cardBg}; border: 1px solid ${cardBorder}; padding: 32px; border-radius: 16px; width: 90%; maxWidth: 520px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 99999; backdrop-filter: blur(4px); }
+        .modal-content { background: ${cardBg}; border: 1px solid ${cardBorder}; padding: 32px; border-radius: 16px; width: 90%; max-width: 520px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
         .ai-text h3 { color: ${palette.primary}; font-size: 15px; margin: 16px 0 8px; border-bottom: 1px solid ${palette.accent}; padding-bottom: 4px; font-weight:600; }
         .ai-text p { font-size: 14px; line-height: 1.6; color: ${textColor}; margin: 0 0 12px; }
 
-        /* RESPONSIVE & VISTA PREVIA FIJA EN WEB */
         @media (min-width: 769px) {
           .mobile-tabs { display: none !important; }
           .panel-right-mobile {
@@ -663,7 +709,7 @@ export default function App() {
           .cvb-header-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
           .cvb-header-actions button { flex: 1 1 auto; font-size: 11px !important; padding: 8px 10px !important; justify-content: center; }
           .cvb-main-layout { padding: 12px !important; gap: 16px !important; }
-          .mobile-tabs { display: flex !important; width: 100%; background: ${darkMode ? '#333' : '#E2E4E2'}; border-radius: 8px; padding: 4px; margin-bottom: 12px; }
+          .mobile-tabs { display: flex !important; width: 100%; background: ${darkMode ? '#333' : '#E2E2E2'}; border-radius: 8px; padding: 4px; margin-bottom: 12px; }
           .mobile-tab-btn { flex: 1; padding: 8px; border: none; background: transparent; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; color: ${textColor}; }
           .mobile-tab-btn.active { background: ${cardBg}; color: ${palette.primary}; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
           .panel-left-mobile { display: ${activeTabMobile === 'editor' ? 'block' : 'none'} !important; width: 100% !important; max-width: 100% !important; }
@@ -857,10 +903,6 @@ export default function App() {
           {/* FORMULARIO */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <Section title="2. Datos personales" hint="Información de contacto directa y foto profesional (opcional)." visible={visible.photo} onToggle={() => setVisible(v => ({ ...v, photo: !v.photo }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
-              <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
-                {cv.personal.photo ? <img src={cv.personal.photo} alt="Perfil" style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover", border: `1px solid ${palette.secondary}` }} /> : <div style={{ width: 60, height: 60, borderRadius: "50%", background: darkMode ? "#333" : "#F4F5F4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#AAA", fontWeight: 500 }}>FOTO</div>}
-                <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e.target.files && e.target.files[0])} style={{ fontSize: 12, color: textColor }} />
-              </div>
               <Field label="Nombre completo" value={cv.personal.name} onChange={(v) => updatePersonal("name", v)} />
               <Field label="Puesto / Titular" value={cv.personal.title} onChange={(v) => updatePersonal("title", v)} />
               <Row2><Field label="Email" value={cv.personal.email} onChange={(v) => updatePersonal("email", v)} /><Field label="Teléfono" value={cv.personal.phone} onChange={(v) => updatePersonal("phone", v)} /></Row2>
@@ -881,10 +923,27 @@ export default function App() {
                       <button className="arrow-btn" onClick={() => moveExperience(i, "down")} disabled={i === cv.experience.length - 1}><IconArrowDown color={textColor} /></button>
                     </div>
                   </div>
-                  <Row2><Field label="Puesto" value={exp.role} onChange={(v) => updateExperience(exp.id, "role", v)} /><Field label="Empresa" value={exp.company} onChange={(v) => updateExperience(exp.id, "company", v)} /></Row2>
-                  <Row2><Field label="Desde" value={exp.start} onChange={(v) => updateExperience(exp.id, "start", v)} /><Field label="Hasta" value={exp.end} onChange={(v) => updateExperience(exp.id, "end", v)} /></Row2>
                   
-                  <label className="cvb-label" style={{ marginTop: 12 }}>Logros (Mejorar con IA)</label>
+                  {/* 1. PUESTO Y EMPRESA */}
+                  <Row2><Field label="Puesto" value={exp.role} onChange={(v) => updateExperience(exp.id, "role", v)} /><Field label="Empresa" value={exp.company} onChange={(v) => updateExperience(exp.id, "company", v)} /></Row2>
+                  
+                  {/* 2. DESDE Y HASTA */}
+                  <Row2><Field label="Desde" value={exp.start} onChange={(v) => updateExperience(exp.id, "start", v)} /><Field label="Hasta" value={exp.end} onChange={(v) => updateExperience(exp.id, "end", v)} /></Row2>
+
+                  {/* 3. RESUMEN DEL ROL EN EL MEDIO */}
+                  <div style={{ marginTop: 8, marginBottom: 12 }}>
+                    <label className="cvb-label">Resumen del Rol / Descripción (Detalle libre)</label>
+                    <textarea 
+                      className="cvb-input" 
+                      rows={2} 
+                      value={exp.roleSummary || ""} 
+                      onChange={(e) => updateExperience(exp.id, "roleSummary", e.target.value)} 
+                      placeholder="Redactá en un párrafo el contexto y tus responsabilidades..." 
+                    />
+                  </div>
+
+                  {/* 4. LOGROS Y RESULTADOS */}
+                  <label className="cvb-label" style={{ marginTop: 8 }}>Logros y Resultados (Mejorar con IA)</label>
                   {exp.bullets.map((b, bi) => (
                     <div key={bi} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                       <input className="cvb-input" value={b} onChange={(e) => updateBullet(exp.id, bi, e.target.value)} placeholder="Ej: Reduje costos un 10%..." />
@@ -983,7 +1042,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* PANEL DERECHO */}
+        {/* PANEL DERECHO: VISTA PREVIA DEL CV */}
         <div className="panel-right-mobile" style={{ flex: "2 1 520px", minWidth: 320, overflowX: "auto", display: "flex", justifyContent: "center", paddingBottom: 60 }}>
           <div className="print-area-container">
             <div className="print-area-wrapper">
@@ -1022,12 +1081,28 @@ export default function App() {
               className="cvb-input" 
               rows={8} 
               value={rawCvText} 
-              onChange={(e) => setRawCvText(e.target.value)} 
+              onChange={(e) => {
+                setRawCvText(e.target.value);
+                if (selectedFile) setSelectedFile(null);
+              }} 
               placeholder="Nombre, Experiencia laboral, Educación, Habilidades..." 
               style={{ marginBottom: 16 }}
             />
 
-            <button className="cvb-btn" onClick={handleExtractCvData} disabled={loadingImport || (!rawCvText.trim() && !selectedFile)} style={{ width: "100%", padding: "12px", background: palette.primary, color: "#fff", fontSize: 13, fontWeight: 600 }}>
+            <button 
+              className="cvb-btn" 
+              onClick={handleExtractCvData} 
+              disabled={loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)} 
+              style={{ 
+                width: "100%", 
+                padding: "12px", 
+                background: (loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)) ? "#888" : palette.primary, 
+                color: "#fff", 
+                fontSize: 13, 
+                fontWeight: 600,
+                cursor: (loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)) ? "not-allowed" : "pointer" 
+              }}
+            >
               {loadingImport ? "Procesando e integrando datos..." : "Extraer y Auto-completar CV"}
             </button>
           </div>
@@ -1146,6 +1221,11 @@ function TplNordico({ data, palette, font, density, visible }) {
                 <h3 style={{ fontSize: density === "compact" ? 13.5 : 14.5, fontWeight: 600, margin: 0 }}>{e.role} <span style={{ fontWeight: 400, color: palette.secondary }}>— {e.company}</span></h3>
                 <span style={{ fontSize: 11.5, color: "#888", fontWeight: 400 }}>{e.start} – {e.end || "Actualidad"}</span>
               </div>
+              {e.roleSummary && (
+                <p style={{ fontSize: density === "compact" ? 11.5 : 12, lineHeight: 1.5, color: "#555", margin: "4px 0 6px", fontStyle: "italic" }}>
+                  {e.roleSummary}
+                </p>
+              )}
               <ul style={{ margin: "6px 0 0", paddingLeft: 16, fontSize: density === "compact" ? 11.5 : 12.5, lineHeight: 1.5, color: "#555" }}>
                 {e.bullets.filter(Boolean).map((b, i) => <li key={i} style={{ marginBottom: density === "compact" ? 2 : 4 }}>{b}</li>)}
               </ul>
@@ -1290,6 +1370,11 @@ function TplBloque({ data, palette, font, density, visible }) {
               <div key={e.id} className="page-block" style={{ marginBottom: density === "compact" ? 14 : 20 }}>
                 <h3 style={{ fontSize: density === "compact" ? 13.5 : 14.5, fontWeight: 600, margin: "0 0 2px" }}>{e.role}</h3>
                 <div style={{ fontSize: 12, color: palette.secondary, fontWeight: 500, marginBottom: 4 }}>{e.company} <span style={{ color: "#888", fontWeight: 400, marginLeft: 6 }}>| {e.start} – {e.end || "Actualidad"}</span></div>
+                {e.roleSummary && (
+                  <p style={{ fontSize: density === "compact" ? 11.5 : 12, lineHeight: 1.5, color: "#555", margin: "4px 0 6px", fontStyle: "italic" }}>
+                    {e.roleSummary}
+                  </p>
+                )}
                 <ul style={{ margin: 0, paddingLeft: 16, fontSize: density === "compact" ? 11.5 : 12.5, lineHeight: 1.5, color: "#555" }}>
                   {e.bullets.filter(Boolean).map((b, i) => <li key={i} style={{ marginBottom: 3 }}>{b}</li>)}
                 </ul>
@@ -1361,6 +1446,7 @@ function TplATS({ data, density, visible }) {
           {data.experience.map((e) => (
             <div key={e.id} className="page-block" style={{ marginBottom: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, marginBottom: 2 }}><span>{e.role}, {e.company}</span><span>{e.start} - {e.end || "Actualidad"}</span></div>
+              {e.roleSummary && <p style={{ margin: "2px 0 4px", fontSize: 11.5, fontStyle: "italic", color: "#444" }}>{e.roleSummary}</p>}
               <ul style={{ margin: 0, paddingLeft: 18 }}>{e.bullets.filter(Boolean).map((b, i) => <li key={i} style={{ marginBottom: 2 }}>{b}</li>)}</ul>
             </div>
           ))}
