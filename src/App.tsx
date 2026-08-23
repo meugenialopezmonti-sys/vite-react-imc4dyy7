@@ -155,7 +155,7 @@ async function callClaude(promptOrMessages) {
 /* ---------- APP PRINCIPAL ---------- */
 export default function App() {
   const [showLanding, setShowLanding] = useState(true);
-  const [activeDoc, setActiveDoc] = useState("cv"); // "cv" o "letter"
+  const [activeDoc, setActiveDoc] = useState("cv"); 
   const [darkMode, setDarkMode] = useState(false);
   const [cv, setCv] = useState(emptyCV());
   const [coverLetter, setCoverLetter] = useState(emptyCoverLetter());
@@ -228,7 +228,6 @@ export default function App() {
 
   const updatePersonal = (field, value) => setCv((c) => ({ ...c, personal: { ...c.personal, [field]: value } }));
 
-  /* CARGA DE FOTO DE PERFIL */
   const handlePhotoUpload = (file) => {
     if (!file) return;
     const reader = new FileReader();
@@ -482,26 +481,9 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
     setLoadingAI(null);
   };
 
+  /* DESCARGA DE PDF ATS-FRIENDLY VÍA IMPRESIÓN NATIVA */
   const handleDownloadPdf = () => {
-    setDownloading(true);
-    const element = printRef.current;
-    if (!element) return;
-
-    const opt = {
-      margin: [0.35, 0, 0.35, 0],
-      filename: `${cv.personal.name ? cv.personal.name.trim().replace(/\s+/g, "_") : "Documento"}_${activeDoc === 'cv' ? 'CV' : 'Carta'}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
-      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'legacy'] }
-    };
-
-    if (window.html2pdf) {
-      window.html2pdf().set(opt).from(element).save().then(() => setDownloading(false)).catch(() => setDownloading(false));
-    } else {
-      window.print();
-      setDownloading(false);
-    }
+    window.print();
   };
 
   const currentFontFamily = FONTS.find(f => f.id === selectedFont)?.family || "'Nunito', sans-serif";
@@ -651,7 +633,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
                 value={rawCvText} 
                 onChange={(e) => {
                   setRawCvText(e.target.value);
-                  if (selectedFile) setSelectedFile(null); // Prioridad al texto manual si escribe algo
+                  if (selectedFile) setSelectedFile(null);
                 }} 
                 placeholder="Nombre, Experiencia laboral, Educación, Habilidades..." 
                 style={{ width: "100%", padding: "10px", borderRadius: 6, border: "1px solid #CCC", fontSize: 13, marginBottom: 16, background: "#FFF", color: "#222" }}
@@ -659,18 +641,17 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
 
               <button 
                 onClick={handleExtractCvData} 
-                disabled={loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)} 
+                disabled={loadingImport || (!rawCvText.trim() && !selectedFile)} 
                 style={{ 
                   width: "100%", 
                   padding: "12px", 
-                  background: (loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)) ? "#888" : palette.primary, 
+                  background: (loadingImport || (!rawCvText.trim() && !selectedFile)) ? "#888" : palette.primary, 
                   color: "#fff", 
                   border: "none", 
                   borderRadius: 6, 
                   fontSize: 13, 
                   fontWeight: 600, 
-                  cursor: (loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)) ? "not-allowed" : "pointer",
-                  transition: "background 0.2s"
+                  cursor: (loadingImport || (!rawCvText.trim() && !selectedFile)) ? "not-allowed" : "pointer" 
                 }}
               >
                 {loadingImport ? "Procesando e integrando datos..." : "Extraer y Auto-completar CV"}
@@ -697,7 +678,6 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
         .print-area-wrapper { position: relative; }
         .print-area { width: 794px; min-height: 1123px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin: 0 auto; }
         
-        /* LÍNEA GUÍA DE CORTE DE HOJA A4 */
         .page-break-indicator {
           position: absolute;
           top: 1123px;
@@ -721,6 +701,15 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
           letter-spacing: 0.5px;
         }
 
+        /* REGLAS DE IMPRESIÓN NATIVA ATS-FRIENDLY VECTORIAL */
+        @media print {
+          body * { visibility: hidden !important; }
+          .print-area, .print-area * { visibility: visible !important; }
+          .print-area { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
+          .page-break-indicator { display: none !important; }
+          @page { size: A4 portrait; margin: 0; }
+        }
+
         .page-block { break-inside: avoid !important; page-break-inside: avoid !important; padding-top: 14px; margin-top: 6px; }
         .page-header-avoid { break-after: avoid !important; page-break-after: avoid !important; }
 
@@ -736,12 +725,10 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
         .ai-text h3 { color: ${palette.primary}; font-size: 15px; margin: 16px 0 8px; border-bottom: 1px solid ${palette.accent}; padding-bottom: 4px; font-weight:600; }
         .ai-text p { font-size: 14px; line-height: 1.6; color: ${textColor}; margin: 0 0 12px; }
 
-        /* SWITCHER DE DOCUMENTOS (CV VS CARTA) */
         .doc-switcher { display: flex; gap: 8px; margin-bottom: 20px; background: ${darkMode ? "#2D2D2D" : "#EAECE8"}; padding: 6px; border-radius: 8px; }
         .doc-switch-btn { flex: 1; padding: 10px 0; border: none; background: transparent; font-size: 13px; font-weight: 600; border-radius: 6px; cursor: pointer; color: ${textColor}; transition: all 0.2s; }
         .doc-switch-btn.active { background: ${cardBg}; color: ${palette.primary}; box-shadow: 0 2px 5px rgba(0,0,0,0.06); }
 
-        /* RESPONSIVE & VISTA PREVIA FIJA EN WEB */
         @media (min-width: 769px) {
           .mobile-tabs { display: none !important; }
           .panel-right-mobile {
@@ -812,7 +799,6 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
         {/* PANEL IZQUIERDO */}
         <div className="panel-left-mobile" style={{ flex: "1 1 400px", minWidth: 320, maxWidth: 480 }}>
           
-          {/* MEDIDOR DE COMPLETITUD Y CAZADOR (Solo visibles si editamos el CV) */}
           {activeDoc === 'cv' && (
             <>
               <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 18, marginBottom: 20 }}>
@@ -887,7 +873,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
             </>
           )}
 
-          {/* ESTILO Y COLOR (Se aplica a AMBOS documentos) */}
+          {/* ESTILO Y COLOR */}
           <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 20 }}>
             <div style={{ marginBottom: 12 }}>
               <h3 style={{ fontSize: 12, fontWeight: 700, margin: "0 0 4px", color: headingColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>1. ESTILO GLOBAL</h3>
@@ -949,7 +935,6 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
             </div>
           </div>
 
-          {/* SWITCHER DE DOCUMENTOS (¿QUÉ ESTOY EDITANDO?) */}
           <div className="doc-switcher">
             <button className={`doc-switch-btn ${activeDoc === 'cv' ? 'active' : ''}`} onClick={() => setActiveDoc('cv')}>
               📄 Curriculum Vitae
@@ -959,10 +944,8 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
             </button>
           </div>
 
-          {/* FORMULARIOS: Se renderizan según el documento activo */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             
-            {/* SIEMPRE MOSTRAMOS DATOS PERSONALES PORQUE EL HEADER LO COMPARTEN */}
             <Section title="2. Datos personales" hint="Esta información encabezará tanto tu CV como la Carta." visible={visible.photo} onToggle={() => setVisible(v => ({ ...v, photo: !v.photo }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
               <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
                 {cv.personal.photo ? (
@@ -987,7 +970,6 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
               <Row2><Field label="Ubicación" value={cv.personal.location} onChange={(v) => updatePersonal("location", v)} /><Field label="LinkedIn / URL" value={cv.personal.linkedin} onChange={(v) => updatePersonal("linkedin", v)} /></Row2>
             </Section>
 
-            {/* SECCIONES EXCLUSIVAS DEL CV */}
             {activeDoc === 'cv' && (
               <>
                 <Section title="3. Perfil Profesional" hint="Sintetizá en 3 o 4 líneas tus fortalezas, especialidad y valor principal." visible={visible.summary} onToggle={() => setVisible(v => ({ ...v, summary: !v.summary }))} darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
@@ -1005,10 +987,8 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
                         </div>
                       </div>
                       
-                      {/* 1. PUESTO Y EMPRESA */}
                       <Row2><Field label="Puesto" value={exp.role} onChange={(v) => updateExperience(exp.id, "role", v)} /><Field label="Empresa" value={exp.company} onChange={(v) => updateExperience(exp.id, "company", v)} /></Row2>
                       
-                      {/* 2. RESUMEN DEL ROL EN EL MEDIO */}
                       <div style={{ marginTop: 8, marginBottom: 12 }}>
                         <label className="cvb-label">Resumen del Rol / Descripción (Detalle libre)</label>
                         <textarea 
@@ -1020,10 +1000,8 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
                         />
                       </div>
 
-                      {/* 3. DESDE Y HASTA */}
                       <Row2><Field label="Desde" value={exp.start} onChange={(v) => updateExperience(exp.id, "start", v)} /><Field label="Hasta" value={exp.end} onChange={(v) => updateExperience(exp.id, "end", v)} /></Row2>
 
-                      {/* 4. LOGROS Y RESULTADOS */}
                       <label className="cvb-label" style={{ marginTop: 16 }}>Logros y Resultados (Mejorar con IA)</label>
                       {exp.bullets.map((b, bi) => (
                         <div key={bi} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
@@ -1095,7 +1073,6 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
                   ))}
                 </Section>
 
-                {/* SECCIONES PERSONALIZADAS */}
                 <Section title="Secciones Personalizadas" hint="Agregá bloques libres con título a elección (Certificaciones, Voluntariados, Proyectos)." onAdd={addCustomSection} addLabel="+ Nueva Sección" darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
                   {(cv.customSections || []).map((sec) => (
                     <div key={sec.id} style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, padding: 16, marginBottom: 16, background: cardBg }}>
@@ -1118,7 +1095,6 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
               </>
             )}
 
-            {/* SECCIONES EXCLUSIVAS DE LA CARTA DE PRESENTACIÓN */}
             {activeDoc === 'letter' && (
               <>
                 <Section title="Datos de Destino" hint="A quién va dirigida tu carta de presentación." darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
@@ -1128,13 +1104,11 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
                   </Row2>
                   <Row2>
                     <Field label="Empresa" value={coverLetter.companyName} onChange={(v) => setCoverLetter(c => ({...c, companyName: v}))} placeholder="Nombre de la empresa" />
-                    <Field label="Dirigido a (Reclutador / Contacto)" value={coverLetter.recipientName} onChange={(v) => setCoverLetter(c => ({...c, recipientName: v}))} placeholder="Ej. Departamento de RRHH" />
+                    <Field label="Dirigido a (Reclutador / Contacto)" value={coverLetter.recipientName} onChange={(v) => setCoverLetter(c => ({...c, recipientName: v}))} placeholder="Ej. Lic. Carlos Gómez / Dpto RRHH" />
                   </Row2>
                 </Section>
 
                 <Section title="Cuerpo de la Carta" hint="Redactá los párrafos principales. El membrete y la despedida se generan solos." darkMode={darkMode} cardBg={cardBg} cardBorder={cardBorder} headingColor={headingColor}>
-                  
-                  {/* GENERADOR DE CARTA POR IA */}
                   <div style={{ background: palette.surface, border: `1px solid ${palette.accent}`, padding: 16, borderRadius: 8, marginBottom: 16 }}>
                     <h4 style={{ fontSize: 12, color: palette.primary, margin: "0 0 6px", display: "flex", alignItems: "center" }}><IconSparkles color={palette.primary}/> Auto-redactar con IA</h4>
                     <p style={{ fontSize: 11, color: "#666", marginBottom: 10 }}>Usaremos la experiencia que cargaste en la pestaña "CV" para escribir una carta a medida para este puesto.</p>
@@ -1154,7 +1128,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
                     rows={14} 
                     value={coverLetter.body} 
                     onChange={(e) => setCoverLetter(c => ({...c, body: e.target.value}))} 
-                    placeholder="Estimado equipo...\n\nEscribo para..." 
+                    placeholder="Escribí aquí tu carta de presentación..." 
                     style={{ lineHeight: 1.6 }}
                   />
                 </Section>
@@ -1186,7 +1160,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
 
       </div>
 
-      {/* MODAL IMPORTAR CV EXISTENTE (CON POSICIÓN FIXED Y CENTRADA) */}
+      {/* MODAL IMPORTAR CV EXISTENTE */}
       {isImportModalOpen && (
         <div className="modal-overlay" onClick={() => setIsImportModalOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -1295,9 +1269,8 @@ function Field({ label, value, onChange, placeholder }) { return (<div style={{ 
 function Row2({ children }) { return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%" }}>{children}</div>; }
 function skillNames(items) { return (items || []).filter((s) => s && s.name && s.name.trim()).map((s) => s.name.trim()); }
 
-
 /* ==========================================================================
-   VISTAS PREVIAS DE LA CARTA DE PRESENTACIÓN (HEREDAN ESTILO DEL CV)
+   VISTAS PREVIAS DE LA CARTA DE PRESENTACIÓN (SIN "A QUIEN CORRESPONDA")
    ========================================================================== */
 function CoverLetterPreview({ cvData, letterData, templateId, palette, font, density }) {
   if (templateId === "nordico") return <LetterNordico cvData={cvData} letter={letterData} palette={palette} font={font} density={density} />;
@@ -1306,14 +1279,12 @@ function CoverLetterPreview({ cvData, letterData, templateId, palette, font, den
   return <LetterNordico cvData={cvData} letter={letterData} palette={palette} font={font} density={density} />;
 }
 
-/* CARTA - NÓRDICO */
 function LetterNordico({ cvData, letter, palette, font, density }) {
   const paddings = density === "compact" ? "40px 48px 30px" : density === "spacious" ? "64px 72px 48px" : "56px 64px 40px";
   const sectionGap = density === "compact" ? 22 : density === "spacious" ? 42 : 32;
 
   return (
     <div style={{ fontFamily: font, background: "#fff", color: palette.textDark, padding: paddings, boxSizing: "border-box", minHeight: "1123px" }}>
-      {/* HEADER IDENTICO AL CV */}
       <div className="page-block" style={{ borderBottom: `1px solid ${palette.accent}`, paddingBottom: density === "compact" ? 16 : 24, marginBottom: sectionGap }}>
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           {cvData.personal.photo && (
@@ -1332,14 +1303,13 @@ function LetterNordico({ cvData, letter, palette, font, density }) {
         </div>
       </div>
 
-      {/* CUERPO DE LA CARTA */}
       <div style={{ fontSize: density === "compact" ? 12 : 13.5, lineHeight: 1.8, color: "#333", maxWidth: "90%", paddingTop: 20 }}>
         <p style={{ margin: "0 0 30px", color: "#666" }}>{letter.date}</p>
         
         <div style={{ marginBottom: 40 }}>
-          <p style={{ margin: "0 0 2px", fontWeight: 600, color: palette.textDark }}>{letter.recipientName || "A quien corresponda,"}</p>
-          <p style={{ margin: "0 0 2px", fontWeight: 500 }}>{letter.companyName}</p>
-          <p style={{ margin: 0, color: palette.secondary }}>{letter.jobTitle && `Ref: Postulación para ${letter.jobTitle}`}</p>
+          {letter.recipientName && <p style={{ margin: "0 0 2px", fontWeight: 600, color: palette.textDark }}>{letter.recipientName}</p>}
+          {letter.companyName && <p style={{ margin: "0 0 2px", fontWeight: 500 }}>{letter.companyName}</p>}
+          {letter.jobTitle && <p style={{ margin: 0, color: palette.secondary }}>{`Ref: Postulación para ${letter.jobTitle}`}</p>}
         </div>
 
         <div style={{ whiteSpace: "pre-wrap" }}>
@@ -1350,7 +1320,6 @@ function LetterNordico({ cvData, letter, palette, font, density }) {
   );
 }
 
-/* CARTA - BLOQUE SUTIL */
 function LetterBloque({ cvData, letter, palette, font, density }) {
   const paddingsLeft = density === "compact" ? "36px 24px" : "48px 32px";
   const paddingsRight = density === "compact" ? "36px 30px" : "48px 40px";
@@ -1358,7 +1327,6 @@ function LetterBloque({ cvData, letter, palette, font, density }) {
 
   return (
     <div style={{ fontFamily: font, display: "flex", minHeight: "1123px", background: "#fff" }}>
-      {/* SIDEBAR IDENTICO AL CV */}
       <div style={{ width: "32%", background: palette.surface, padding: paddingsLeft, color: palette.textDark, display: "flex", flexDirection: "column" }}>
         <div className="page-block" style={{ textAlign: "center", marginBottom: sectionGap }}>
           {cvData.personal.photo && (
@@ -1377,15 +1345,14 @@ function LetterBloque({ cvData, letter, palette, font, density }) {
         </div>
       </div>
       
-      {/* CUERPO DE LA CARTA */}
       <div style={{ width: "68%", padding: paddingsRight, color: palette.textDark }}>
         <div style={{ fontSize: density === "compact" ? 12 : 13.5, lineHeight: 1.8, color: "#333", paddingTop: 10 }}>
           <p style={{ margin: "0 0 30px", color: "#666" }}>{letter.date}</p>
           
           <div style={{ marginBottom: 40, borderLeft: `3px solid ${palette.accent}`, paddingLeft: 14 }}>
-            <p style={{ margin: "0 0 2px", fontWeight: 600, color: palette.textDark }}>{letter.recipientName || "A quien corresponda,"}</p>
-            <p style={{ margin: "0 0 2px", fontWeight: 500 }}>{letter.companyName}</p>
-            <p style={{ margin: 0, color: palette.secondary }}>{letter.jobTitle && `Asunto: Aplicación para ${letter.jobTitle}`}</p>
+            {letter.recipientName && <p style={{ margin: "0 0 2px", fontWeight: 600, color: palette.textDark }}>{letter.recipientName}</p>}
+            {letter.companyName && <p style={{ margin: "0 0 2px", fontWeight: 500 }}>{letter.companyName}</p>}
+            {letter.jobTitle && <p style={{ margin: 0, color: palette.secondary }}>{`Asunto: Aplicación para ${letter.jobTitle}`}</p>}
           </div>
 
           <div style={{ whiteSpace: "pre-wrap" }}>
@@ -1397,11 +1364,9 @@ function LetterBloque({ cvData, letter, palette, font, density }) {
   );
 }
 
-/* CARTA - ATS ESTRICTO */
 function LetterATS({ cvData, letter, density }) {
   return (
     <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#222", padding: density === "compact" ? "40px" : "60px", fontSize: density === "compact" ? 12 : 13, lineHeight: 1.6, background: "#fff", minHeight: "1123px" }}>
-      {/* HEADER ATS */}
       <div className="page-block" style={{ marginBottom: 40 }}>
         <h1 style={{ fontSize: density === "compact" ? 16 : 18, fontWeight: 700, margin: "0 0 4px", textAlign: "center", textTransform: "uppercase" }}>{cvData.personal.name || "NOMBRE APELLIDO"}</h1>
         <p style={{ margin: "0 0 6px", textAlign: "center", fontSize: 12.5 }}>{cvData.personal.title}</p>
@@ -1411,9 +1376,9 @@ function LetterATS({ cvData, letter, density }) {
       
       <div style={{ marginBottom: 30 }}>
         <p style={{ margin: "0 0 20px" }}>{letter.date}</p>
-        <p style={{ margin: "0 0 2px", fontWeight: 600 }}>{letter.recipientName || "Departamento de Selección"}</p>
-        <p style={{ margin: "0 0 2px" }}>{letter.companyName}</p>
-        <p style={{ margin: 0, fontStyle: "italic" }}>{letter.jobTitle && `Ref: ${letter.jobTitle}`}</p>
+        {letter.recipientName && <p style={{ margin: "0 0 2px", fontWeight: 600 }}>{letter.recipientName}</p>}
+        {letter.companyName && <p style={{ margin: "0 0 2px" }}>{letter.companyName}</p>}
+        {letter.jobTitle && <p style={{ margin: 0, fontStyle: "italic" }}>{`Ref: ${letter.jobTitle}`}</p>}
       </div>
 
       <div style={{ whiteSpace: "pre-wrap", textAlign: "justify" }}>
@@ -1422,7 +1387,6 @@ function LetterATS({ cvData, letter, density }) {
     </div>
   );
 }
-
 
 /* ==========================================================================
    VISTAS PREVIAS DEL CURRICULUM VITAE
