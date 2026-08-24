@@ -481,9 +481,55 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
     setLoadingAI(null);
   };
 
-  /* DESCARGA DE PDF VECTORIAL Y LIMPIA VÍA IMPRESIÓN NATIVA */
+  /* DESCARGA DE PDF VECTORIAL Y 100% AISLADA VIA IFRAME */
   const handleDownloadPdf = () => {
-    window.print();
+    const printContent = printRef.current;
+    if (!printContent) return;
+
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow.document;
+    const styles = Array.from(document.querySelectorAll("style, link[rel='stylesheet']"))
+      .map(s => s.outerHTML)
+      .join("\n");
+
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${(cv.personal.name || "Documento").trim().replace(/\s+/g, "_")}_${activeDoc === 'cv' ? 'CV' : 'Carta'}</title>
+          ${styles}
+          <style>
+            @page { size: A4 portrait; margin: 0; }
+            body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .page-break-indicator { display: none !important; }
+            .print-area { width: 100% !important; min-height: auto !important; box-shadow: none !important; margin: 0 !important; }
+          </style>
+        </head>
+        <body>
+          ${printContent.outerHTML}
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 1000);
+    }, 300);
   };
 
   const currentFontFamily = FONTS.find(f => f.id === selectedFont)?.family || "'Nunito', sans-serif";
@@ -699,67 +745,6 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
           padding: 2px 8px;
           border-radius: 4px;
           letter-spacing: 0.5px;
-        }
-
-        /* REGLAS DE IMPRESIÓN NATIVA ATS-FRIENDLY Y LIMPIA CON AISLAMIENTO DE HOJA */
-        @media print {
-          body, html {
-            background: #ffffff !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            height: auto !important;
-            overflow: visible !important;
-          }
-          .cvb-header-nav,
-          .panel-left-mobile,
-          .mobile-tabs,
-          .page-break-indicator,
-          .modal-overlay,
-          .doc-switcher {
-            display: none !important;
-          }
-          .cvb-main-layout {
-            padding: 0 !important;
-            margin: 0 !important;
-            display: block !important;
-          }
-          .panel-right-mobile {
-            position: static !important;
-            width: 100% !important;
-            max-height: none !important;
-            overflow: visible !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            display: block !important;
-          }
-          .print-area-container {
-            transform: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-          }
-          .print-area-wrapper {
-            position: static !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          .print-area {
-            position: static !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            min-height: auto !important;
-            box-shadow: none !important;
-            border: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #ffffff !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          @page {
-            size: A4 portrait;
-            margin: 10mm;
-          }
         }
 
         .page-block { break-inside: avoid !important; page-break-inside: avoid !important; padding-top: 14px; margin-top: 6px; }
