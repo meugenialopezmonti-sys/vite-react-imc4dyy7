@@ -703,30 +703,62 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
 
         /* REGLAS DE IMPRESIÓN NATIVA ATS-FRIENDLY Y LIMPIA CON AISLAMIENTO DE HOJA */
         @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          .print-area, .print-area * {
-            visibility: visible !important;
-          }
-          .print-area {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
+          body, html {
+            background: #ffffff !important;
             margin: 0 !important;
             padding: 0 !important;
+            height: auto !important;
+            overflow: visible !important;
+          }
+          .cvb-header-nav,
+          .panel-left-mobile,
+          .mobile-tabs,
+          .page-break-indicator,
+          .modal-overlay,
+          .doc-switcher {
+            display: none !important;
+          }
+          .cvb-main-layout {
+            padding: 0 !important;
+            margin: 0 !important;
+            display: block !important;
+          }
+          .panel-right-mobile {
+            position: static !important;
+            width: 100% !important;
+            max-height: none !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: block !important;
+          }
+          .print-area-container {
+            transform: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+          }
+          .print-area-wrapper {
+            position: static !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .print-area {
+            position: static !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-height: auto !important;
             box-shadow: none !important;
             border: none !important;
-          }
-          .page-break-indicator,
-          .modal-overlay {
-            display: none !important;
-            visibility: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           @page {
             size: A4 portrait;
-            margin: 0;
+            margin: 10mm;
           }
         }
 
