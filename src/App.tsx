@@ -481,7 +481,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
     setLoadingAI(null);
   };
 
-  /* DESCARGA DE PDF VECTORIAL CON MARGEN OPTIMIZADO (6mm) */
+  /* DESCARGA DE PDF VECTORIAL CON MARGEN OPTIMIZADO */
   const handleDownloadPdf = () => {
     const printContent = printRef.current;
     if (!printContent) return;
@@ -510,7 +510,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
           <style>
             @page { 
               size: A4 portrait; 
-              margin: 6mm 0 6mm 0; 
+              margin: 8mm 0 8mm 0; 
             }
             body { 
               margin: 0; 
@@ -522,6 +522,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
             .page-break-indicator { display: none !important; }
             .print-area { width: 100% !important; min-height: auto !important; box-shadow: none !important; margin: 0 !important; }
             .page-block { padding-top: 4px !important; margin-top: 2px !important; }
+            .exp-item { break-inside: avoid !important; page-break-inside: avoid !important; }
             li { break-inside: avoid !important; page-break-inside: avoid !important; }
           </style>
         </head>
@@ -760,6 +761,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
 
         .page-block { padding-top: 8px; margin-top: 4px; }
         .page-header-avoid { break-after: avoid !important; page-break-after: avoid !important; }
+        .exp-item { break-inside: avoid !important; page-break-inside: avoid !important; }
         li { break-inside: avoid !important; page-break-inside: avoid !important; }
 
         .color-swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -1494,7 +1496,7 @@ function TplNordico({ data, palette, font, density, visible }) {
             Experiencia Profesional
           </h2>
           {data.experience.map((e) => (
-            <div key={e.id} style={{ marginBottom: itemGap }}>
+            <div key={e.id} className="exp-item" style={{ marginBottom: itemGap }}>
               <div className="page-header-avoid" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
                 <h3 style={{ fontSize: density === "compact" ? 13.5 : 14.5, fontWeight: 600, margin: 0 }}>{e.role} <span style={{ fontWeight: 400, color: palette.secondary }}>— {e.company}</span></h3>
                 <span style={{ fontSize: 11.5, color: "#888", fontWeight: 400 }}>{e.start} – {e.end || "Actualidad"}</span>
@@ -1645,7 +1647,7 @@ function TplBloque({ data, palette, font, density, visible }) {
           <div style={{ marginBottom: sectionGap }}>
             <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 16, letterSpacing: "1px" }}>Experiencia</h2>
             {data.experience.map((e) => (
-              <div key={e.id} style={{ marginBottom: density === "compact" ? 14 : 20 }}>
+              <div key={e.id} className="exp-item" style={{ marginBottom: density === "compact" ? 14 : 20 }}>
                 <h3 className="page-header-avoid" style={{ fontSize: density === "compact" ? 13.5 : 14.5, fontWeight: 600, margin: "0 0 2px" }}>{e.role}</h3>
                 <div className="page-header-avoid" style={{ fontSize: 12, color: palette.secondary, fontWeight: 500, marginBottom: 4 }}>{e.company} <span style={{ color: "#888", fontWeight: 400, marginLeft: 6 }}>| {e.start} – {e.end || "Actualidad"}</span></div>
                 {e.roleSummary && (
@@ -1722,7 +1724,7 @@ function TplATS({ data, density, visible }) {
         <div style={{ marginBottom: 12 }}>
           <h2 className="page-header-avoid" style={{ fontSize: 11.5, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 3, marginBottom: 6, textTransform: "uppercase" }}>Experiencia Laboral</h2>
           {data.experience.map((e) => (
-            <div key={e.id} style={{ marginBottom: 10 }}>
+            <div key={e.id} className="exp-item" style={{ marginBottom: 10 }}>
               <div className="page-header-avoid" style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, marginBottom: 2 }}><span>{e.role}, {e.company}</span><span>{e.start} - {e.end || "Actualidad"}</span></div>
               {e.roleSummary && <p style={{ margin: "2px 0 4px", fontSize: 11.5, fontStyle: "italic", color: "#444" }}>{e.roleSummary}</p>}
               <ul style={{ margin: 0, paddingLeft: 18 }}>{e.bullets.filter(Boolean).map((b, i) => <li key={i} style={{ marginBottom: 2 }}>{b}</li>)}</ul>
