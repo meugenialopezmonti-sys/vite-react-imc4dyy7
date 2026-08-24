@@ -481,7 +481,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
     setLoadingAI(null);
   };
 
-  /* DESCARGA DE PDF ATS-FRIENDLY VÍA IMPRESIÓN NATIVA */
+  /* DESCARGA DE PDF VECTORIAL Y LIMPIA VÍA IMPRESIÓN NATIVA */
   const handleDownloadPdf = () => {
     window.print();
   };
@@ -701,13 +701,50 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
           letter-spacing: 0.5px;
         }
 
-        /* REGLAS DE IMPRESIÓN NATIVA ATS-FRIENDLY VECTORIAL */
+        /* REGLAS DE IMPRESIÓN NATIVA ATS-FRIENDLY VECTORIAL (ELIMINA HOJAS FANTASMA) */
         @media print {
-          body * { visibility: hidden !important; }
-          .print-area, .print-area * { visibility: visible !important; }
-          .print-area { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
-          .page-break-indicator { display: none !important; }
-          @page { size: A4 portrait; margin: 0; }
+          body { background: white !important; color: black !important; }
+          .cvb-header-nav,
+          .panel-left-mobile,
+          .mobile-tabs,
+          .page-break-indicator,
+          .modal-overlay,
+          .doc-switcher {
+            display: none !important;
+          }
+          .cvb-main-layout {
+            padding: 0 !important;
+            margin: 0 !important;
+            display: block !important;
+          }
+          .panel-right-mobile {
+            position: static !important;
+            width: 100% !important;
+            max-height: none !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            display: block !important;
+          }
+          .print-area-container {
+            transform: none !important;
+            margin: 0 !important;
+          }
+          .print-area-wrapper {
+            margin: 0 !important;
+          }
+          .print-area {
+            width: 100% !important;
+            min-height: auto !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
         }
 
         .page-block { break-inside: avoid !important; page-break-inside: avoid !important; padding-top: 14px; margin-top: 6px; }
@@ -1104,7 +1141,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
                   </Row2>
                   <Row2>
                     <Field label="Empresa" value={coverLetter.companyName} onChange={(v) => setCoverLetter(c => ({...c, companyName: v}))} placeholder="Nombre de la empresa" />
-                    <Field label="Dirigido a (Reclutador / Contacto)" value={coverLetter.recipientName} onChange={(v) => setCoverLetter(c => ({...c, recipientName: v}))} placeholder="Ej. Lic. Carlos Gómez / Dpto RRHH" />
+                    <Field label="Dirigido a (Reclutador / Contacto - Opcional)" value={coverLetter.recipientName} onChange={(v) => setCoverLetter(c => ({...c, recipientName: v}))} placeholder="Ej. Lic. Carlos Gómez / Dpto RRHH" />
                   </Row2>
                 </Section>
 
@@ -1306,11 +1343,13 @@ function LetterNordico({ cvData, letter, palette, font, density }) {
       <div style={{ fontSize: density === "compact" ? 12 : 13.5, lineHeight: 1.8, color: "#333", maxWidth: "90%", paddingTop: 20 }}>
         <p style={{ margin: "0 0 30px", color: "#666" }}>{letter.date}</p>
         
-        <div style={{ marginBottom: 40 }}>
-          {letter.recipientName && <p style={{ margin: "0 0 2px", fontWeight: 600, color: palette.textDark }}>{letter.recipientName}</p>}
-          {letter.companyName && <p style={{ margin: "0 0 2px", fontWeight: 500 }}>{letter.companyName}</p>}
-          {letter.jobTitle && <p style={{ margin: 0, color: palette.secondary }}>{`Ref: Postulación para ${letter.jobTitle}`}</p>}
-        </div>
+        {(letter.recipientName || letter.companyName || letter.jobTitle) && (
+          <div style={{ marginBottom: 40 }}>
+            {letter.recipientName && <p style={{ margin: "0 0 2px", fontWeight: 600, color: palette.textDark }}>{letter.recipientName}</p>}
+            {letter.companyName && <p style={{ margin: "0 0 2px", fontWeight: 500 }}>{letter.companyName}</p>}
+            {letter.jobTitle && <p style={{ margin: 0, color: palette.secondary }}>{`Ref: Postulación para ${letter.jobTitle}`}</p>}
+          </div>
+        )}
 
         <div style={{ whiteSpace: "pre-wrap" }}>
           {letter.body}
@@ -1349,11 +1388,13 @@ function LetterBloque({ cvData, letter, palette, font, density }) {
         <div style={{ fontSize: density === "compact" ? 12 : 13.5, lineHeight: 1.8, color: "#333", paddingTop: 10 }}>
           <p style={{ margin: "0 0 30px", color: "#666" }}>{letter.date}</p>
           
-          <div style={{ marginBottom: 40, borderLeft: `3px solid ${palette.accent}`, paddingLeft: 14 }}>
-            {letter.recipientName && <p style={{ margin: "0 0 2px", fontWeight: 600, color: palette.textDark }}>{letter.recipientName}</p>}
-            {letter.companyName && <p style={{ margin: "0 0 2px", fontWeight: 500 }}>{letter.companyName}</p>}
-            {letter.jobTitle && <p style={{ margin: 0, color: palette.secondary }}>{`Asunto: Aplicación para ${letter.jobTitle}`}</p>}
-          </div>
+          {(letter.recipientName || letter.companyName || letter.jobTitle) && (
+            <div style={{ marginBottom: 40, borderLeft: `3px solid ${palette.accent}`, paddingLeft: 14 }}>
+              {letter.recipientName && <p style={{ margin: "0 0 2px", fontWeight: 600, color: palette.textDark }}>{letter.recipientName}</p>}
+              {letter.companyName && <p style={{ margin: "0 0 2px", fontWeight: 500 }}>{letter.companyName}</p>}
+              {letter.jobTitle && <p style={{ margin: 0, color: palette.secondary }}>{`Asunto: Aplicación para ${letter.jobTitle}`}</p>}
+            </div>
+          )}
 
           <div style={{ whiteSpace: "pre-wrap" }}>
             {letter.body}
