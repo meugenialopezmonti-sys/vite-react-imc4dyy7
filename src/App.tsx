@@ -481,7 +481,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
     setLoadingAI(null);
   };
 
-  /* DESCARGA DE PDF VECTORIAL CON ENCABEZADO Y MARGEN DE SEGURIDAD */
+  /* DESCARGA DE PDF VECTORIAL CON MARGEN OPTIMIZADO (6mm) */
   const handleDownloadPdf = () => {
     const printContent = printRef.current;
     if (!printContent) return;
@@ -510,7 +510,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
           <style>
             @page { 
               size: A4 portrait; 
-              margin: 10mm 0 10mm 0; 
+              margin: 6mm 0 6mm 0; 
             }
             body { 
               margin: 0; 
@@ -521,7 +521,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
             }
             .page-break-indicator { display: none !important; }
             .print-area { width: 100% !important; min-height: auto !important; box-shadow: none !important; margin: 0 !important; }
-            .page-block { padding-top: 8px !important; margin-top: 4px !important; }
+            .page-block { padding-top: 4px !important; margin-top: 2px !important; }
             li { break-inside: avoid !important; page-break-inside: avoid !important; }
           </style>
         </head>
@@ -1253,7 +1253,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
                 color: "#fff", 
                 fontSize: 13, 
                 fontWeight: 600,
-                cursor: (loadingImport || (!rawCvText.trim() && !pdfBase64 && !selectedFile)) ? "not-allowed" : "pointer" 
+                cursor: (loadingImport || (!rawCvText.trim() && !selectedFile)) ? "not-allowed" : "pointer" 
               }}
             >
               {loadingImport ? "Procesando e integrando datos..." : "Extraer y Auto-completar CV"}
