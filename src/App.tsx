@@ -510,7 +510,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
           <style>
             @page { 
               size: A4 portrait; 
-              margin: 14mm 0 14mm 0; 
+              margin: 10mm 0 10mm 0; 
             }
             body { 
               margin: 0; 
@@ -521,7 +521,8 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
             }
             .page-break-indicator { display: none !important; }
             .print-area { width: 100% !important; min-height: auto !important; box-shadow: none !important; margin: 0 !important; }
-            .page-block { padding-top: 12px !important; margin-top: 6px !important; }
+            .page-block { padding-top: 8px !important; margin-top: 4px !important; }
+            li { break-inside: avoid !important; page-break-inside: avoid !important; }
           </style>
         </head>
         <body>
@@ -757,8 +758,9 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
           letter-spacing: 0.5px;
         }
 
-        .page-block { break-inside: avoid !important; page-break-inside: avoid !important; padding-top: 14px; margin-top: 6px; }
+        .page-block { padding-top: 8px; margin-top: 4px; }
         .page-header-avoid { break-after: avoid !important; page-break-after: avoid !important; }
+        li { break-inside: avoid !important; page-break-inside: avoid !important; }
 
         .color-swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .color-swatch:hover { transform: scale(1.1); }
@@ -1492,8 +1494,8 @@ function TplNordico({ data, palette, font, density, visible }) {
             Experiencia Profesional
           </h2>
           {data.experience.map((e) => (
-            <div key={e.id} className="page-block" style={{ marginBottom: itemGap }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+            <div key={e.id} style={{ marginBottom: itemGap }}>
+              <div className="page-header-avoid" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
                 <h3 style={{ fontSize: density === "compact" ? 13.5 : 14.5, fontWeight: 600, margin: 0 }}>{e.role} <span style={{ fontWeight: 400, color: palette.secondary }}>— {e.company}</span></h3>
                 <span style={{ fontSize: 11.5, color: "#888", fontWeight: 400 }}>{e.start} – {e.end || "Actualidad"}</span>
               </div>
@@ -1643,9 +1645,9 @@ function TplBloque({ data, palette, font, density, visible }) {
           <div style={{ marginBottom: sectionGap }}>
             <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 16, letterSpacing: "1px" }}>Experiencia</h2>
             {data.experience.map((e) => (
-              <div key={e.id} className="page-block" style={{ marginBottom: density === "compact" ? 14 : 20 }}>
-                <h3 style={{ fontSize: density === "compact" ? 13.5 : 14.5, fontWeight: 600, margin: "0 0 2px" }}>{e.role}</h3>
-                <div style={{ fontSize: 12, color: palette.secondary, fontWeight: 500, marginBottom: 4 }}>{e.company} <span style={{ color: "#888", fontWeight: 400, marginLeft: 6 }}>| {e.start} – {e.end || "Actualidad"}</span></div>
+              <div key={e.id} style={{ marginBottom: density === "compact" ? 14 : 20 }}>
+                <h3 className="page-header-avoid" style={{ fontSize: density === "compact" ? 13.5 : 14.5, fontWeight: 600, margin: "0 0 2px" }}>{e.role}</h3>
+                <div className="page-header-avoid" style={{ fontSize: 12, color: palette.secondary, fontWeight: 500, marginBottom: 4 }}>{e.company} <span style={{ color: "#888", fontWeight: 400, marginLeft: 6 }}>| {e.start} – {e.end || "Actualidad"}</span></div>
                 {e.roleSummary && (
                   <p style={{ fontSize: density === "compact" ? 11.5 : 12, lineHeight: 1.5, color: "#555", margin: "4px 0 6px", fontStyle: "italic" }}>
                     {e.roleSummary}
@@ -1720,8 +1722,8 @@ function TplATS({ data, density, visible }) {
         <div style={{ marginBottom: 12 }}>
           <h2 className="page-header-avoid" style={{ fontSize: 11.5, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 3, marginBottom: 6, textTransform: "uppercase" }}>Experiencia Laboral</h2>
           {data.experience.map((e) => (
-            <div key={e.id} className="page-block" style={{ marginBottom: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, marginBottom: 2 }}><span>{e.role}, {e.company}</span><span>{e.start} - {e.end || "Actualidad"}</span></div>
+            <div key={e.id} style={{ marginBottom: 10 }}>
+              <div className="page-header-avoid" style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, marginBottom: 2 }}><span>{e.role}, {e.company}</span><span>{e.start} - {e.end || "Actualidad"}</span></div>
               {e.roleSummary && <p style={{ margin: "2px 0 4px", fontSize: 11.5, fontStyle: "italic", color: "#444" }}>{e.roleSummary}</p>}
               <ul style={{ margin: 0, paddingLeft: 18 }}>{e.bullets.filter(Boolean).map((b, i) => <li key={i} style={{ marginBottom: 2 }}>{b}</li>)}</ul>
             </div>
