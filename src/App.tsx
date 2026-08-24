@@ -701,49 +701,32 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
           letter-spacing: 0.5px;
         }
 
-        /* REGLAS DE IMPRESIÓN NATIVA ATS-FRIENDLY VECTORIAL (ELIMINA HOJAS FANTASMA) */
+        /* REGLAS DE IMPRESIÓN NATIVA ATS-FRIENDLY Y LIMPIA CON AISLAMIENTO DE HOJA */
         @media print {
-          body { background: white !important; color: black !important; }
-          .cvb-header-nav,
-          .panel-left-mobile,
-          .mobile-tabs,
-          .page-break-indicator,
-          .modal-overlay,
-          .doc-switcher {
-            display: none !important;
+          body * {
+            visibility: hidden !important;
           }
-          .cvb-main-layout {
-            padding: 0 !important;
-            margin: 0 !important;
-            display: block !important;
-          }
-          .panel-right-mobile {
-            position: static !important;
-            width: 100% !important;
-            max-height: none !important;
-            overflow: visible !important;
-            padding: 0 !important;
-            display: block !important;
-          }
-          .print-area-container {
-            transform: none !important;
-            margin: 0 !important;
-          }
-          .print-area-wrapper {
-            margin: 0 !important;
+          .print-area, .print-area * {
+            visibility: visible !important;
           }
           .print-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 100% !important;
-            min-height: auto !important;
-            box-shadow: none !important;
             margin: 0 !important;
             padding: 0 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+          .page-break-indicator,
+          .modal-overlay {
+            display: none !important;
+            visibility: hidden !important;
           }
           @page {
             size: A4 portrait;
-            margin: 10mm;
+            margin: 0;
           }
         }
 
@@ -1307,7 +1290,7 @@ function Row2({ children }) { return <div style={{ display: "grid", gridTemplate
 function skillNames(items) { return (items || []).filter((s) => s && s.name && s.name.trim()).map((s) => s.name.trim()); }
 
 /* ==========================================================================
-   VISTAS PREVIAS DE LA CARTA DE PRESENTACIÓN (SIN "A QUIEN CORRESPONDA")
+   VISTAS PREVIAS DE LA CARTA DE PRESENTACIÓN
    ========================================================================== */
 function CoverLetterPreview({ cvData, letterData, templateId, palette, font, density }) {
   if (templateId === "nordico") return <LetterNordico cvData={cvData} letter={letterData} palette={palette} font={font} density={density} />;
