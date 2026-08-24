@@ -481,7 +481,7 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
     setLoadingAI(null);
   };
 
-  /* DESCARGA DE PDF VECTORIAL Y 100% AISLADA VIA IFRAME */
+  /* DESCARGA DE PDF VECTORIAL CON ENCABEZADO Y MARGEN DE SEGURIDAD */
   const handleDownloadPdf = () => {
     const printContent = printRef.current;
     if (!printContent) return;
@@ -508,10 +508,20 @@ Devolvé ÚNICAMENTE el texto del cuerpo de la carta (los párrafos), listo para
           <title>${(cv.personal.name || "Documento").trim().replace(/\s+/g, "_")}_${activeDoc === 'cv' ? 'CV' : 'Carta'}</title>
           ${styles}
           <style>
-            @page { size: A4 portrait; margin: 0; }
-            body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            @page { 
+              size: A4 portrait; 
+              margin: 14mm 0 14mm 0; 
+            }
+            body { 
+              margin: 0; 
+              padding: 0; 
+              background: white; 
+              -webkit-print-color-adjust: exact; 
+              print-color-adjust: exact; 
+            }
             .page-break-indicator { display: none !important; }
             .print-area { width: 100% !important; min-height: auto !important; box-shadow: none !important; margin: 0 !important; }
+            .page-block { padding-top: 12px !important; margin-top: 6px !important; }
           </style>
         </head>
         <body>
