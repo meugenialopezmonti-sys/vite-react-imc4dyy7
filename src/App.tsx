@@ -1336,10 +1336,10 @@ function LetterNordico({ cvData, letter, palette, font, density }) {
 
   return (
     <div style={{ fontFamily: font, background: "#fff", color: palette.textDark, padding: paddings, boxSizing: "border-box", minHeight: "1123px" }}>
-      <div className="page-block" style={{ borderBottom: `1px solid ${palette.accent}`, paddingBottom: density === "compact" ? 16 : 24, marginBottom: sectionGap }}>
+      <div className="page-block page-header-avoid" style={{ borderBottom: `1px solid ${palette.accent}`, paddingBottom: density === "compact" ? 16 : 24, marginBottom: sectionGap }}>
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           {cvData.personal.photo && (
-            <img src={cvData.personal.photo} alt="Perfil" style={{ width: density === "compact" ? 68 : 80, height: density === "compact" ? 68 : 80, borderRadius: "50%", objectFit: "cover" }} />
+            <img src={cvData.personal.photo} alt="Perfil" style={{ width: density === "compact" ? 68 : 80, height: density === "compact" ? 68 : 80, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
           )}
           <div>
             <h1 style={{ fontSize: density === "compact" ? 26 : 30, fontWeight: 600, margin: "0 0 4px", color: palette.textDark, letterSpacing: "-0.5px" }}>{cvData.personal.name || "Nombre Apellido"}</h1>
@@ -1381,7 +1381,7 @@ function LetterBloque({ cvData, letter, palette, font, density }) {
   return (
     <div style={{ fontFamily: font, display: "flex", minHeight: "1123px", background: "#fff" }}>
       <div style={{ width: "32%", background: palette.surface, padding: paddingsLeft, color: palette.textDark, display: "flex", flexDirection: "column" }}>
-        <div className="page-block" style={{ textAlign: "center", marginBottom: sectionGap }}>
+        <div className="page-block page-header-avoid" style={{ textAlign: "center", marginBottom: sectionGap }}>
           {cvData.personal.photo && (
              <img src={cvData.personal.photo} alt="Perfil" style={{ width: density === "compact" ? 80 : 100, height: density === "compact" ? 80 : 100, borderRadius: "50%", objectFit: "cover", marginBottom: 14 }} />
           )}
@@ -1389,7 +1389,7 @@ function LetterBloque({ cvData, letter, palette, font, density }) {
           <p style={{ fontSize: 12, fontWeight: 500, color: palette.primary, margin: 0 }}>{cvData.personal.title}</p>
         </div>
 
-        <div className="page-block" style={{ marginBottom: sectionGap }}>
+        <div className="page-block page-header-avoid" style={{ marginBottom: sectionGap }}>
           <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 10, letterSpacing: "1px" }}>Contacto</h3>
           {cvData.personal.location && <p style={{ fontSize: 11, margin: "0 0 6px" }}><IconPin color={palette.secondary} size={12} />{cvData.personal.location}</p>}
           {cvData.personal.phone && <p style={{ fontSize: 11, margin: "0 0 6px" }}><IconPhone color={palette.secondary} size={12} />{cvData.personal.phone}</p>}
@@ -1422,7 +1422,7 @@ function LetterBloque({ cvData, letter, palette, font, density }) {
 function LetterATS({ cvData, letter, density }) {
   return (
     <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#222", padding: density === "compact" ? "40px" : "60px", fontSize: density === "compact" ? 12 : 13, lineHeight: 1.6, background: "#fff", minHeight: "1123px" }}>
-      <div className="page-block" style={{ marginBottom: 40 }}>
+      <div className="page-block page-header-avoid" style={{ marginBottom: 40 }}>
         <h1 style={{ fontSize: density === "compact" ? 16 : 18, fontWeight: 700, margin: "0 0 4px", textAlign: "center", textTransform: "uppercase" }}>{cvData.personal.name || "NOMBRE APELLIDO"}</h1>
         <p style={{ margin: "0 0 6px", textAlign: "center", fontSize: 12.5 }}>{cvData.personal.title}</p>
         <p style={{ margin: "0 0 16px", fontSize: 11, textAlign: "center", color: "#555" }}>{[cvData.personal.location, cvData.personal.email, cvData.personal.phone, cvData.personal.linkedin].filter(Boolean).join(" | ")}</p>
@@ -1453,7 +1453,7 @@ function CVPreview({ data, templateId, palette, font, density, visible }) {
   return <TplNordico data={data} palette={palette} font={font} density={density} visible={visible} />;
 }
 
-/* 1. NÓRDICO MINIMALISTA */
+/* 1. NÓRDICO MINIMALISTA (CON SALTOS DE PÁGINA CORREGIDOS) */
 function TplNordico({ data, palette, font, density, visible }) {
   const toolsList = skillNames(data.tools);
   const skillsList = skillNames(data.skills);
@@ -1466,10 +1466,12 @@ function TplNordico({ data, palette, font, density, visible }) {
 
   return (
     <div style={{ fontFamily: font, background: "#fff", color: palette.textDark, padding: paddings, boxSizing: "border-box" }}>
-      <div className="page-block" style={{ borderBottom: `1px solid ${palette.accent}`, paddingBottom: density === "compact" ? 16 : 24, marginBottom: sectionGap }}>
+      
+      {/* --- ENCABEZADO --- */}
+      <div className="page-block page-header-avoid" style={{ borderBottom: `1px solid ${palette.accent}`, paddingBottom: density === "compact" ? 16 : 24, marginBottom: sectionGap }}>
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           {visible.photo && data.personal.photo && (
-            <img src={data.personal.photo} alt="Perfil" style={{ width: density === "compact" ? 68 : 80, height: density === "compact" ? 68 : 80, borderRadius: "50%", objectFit: "cover" }} />
+            <img src={data.personal.photo} alt="Perfil" style={{ width: density === "compact" ? 68 : 80, height: density === "compact" ? 68 : 80, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
           )}
           <div>
             <h1 style={{ fontSize: density === "compact" ? 26 : 30, fontWeight: 600, margin: "0 0 4px", color: palette.textDark, letterSpacing: "-0.5px" }}>{data.personal.name || "Nombre Apellido"}</h1>
@@ -1484,22 +1486,24 @@ function TplNordico({ data, palette, font, density, visible }) {
         </div>
       </div>
 
+      {/* --- PERFIL --- */}
       {visible.summary && data.summary && (
-        <div className="page-block" style={{ marginBottom: sectionGap }}>
+        <div className="page-block exp-item" style={{ marginBottom: sectionGap }}>
           <p style={{ fontSize: density === "compact" ? 12 : 13, lineHeight: 1.6, margin: 0, fontWeight: 400, color: "#4A4A4A" }}>{data.summary}</p>
         </div>
       )}
 
+      {/* --- EXPERIENCIA --- */}
       {visible.experience && (
         <div style={{ marginBottom: sectionGap }}>
           <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: density === "compact" ? 14 : 20, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>
             Experiencia Profesional
           </h2>
           {data.experience.map((e) => (
-            <div key={e.id} className="exp-item" style={{ marginBottom: itemGap }}>
+            <div key={e.id} className="exp-item" style={{ marginBottom: itemGap, paddingBottom: 2 }}>
               <div className="page-header-avoid" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
                 <h3 style={{ fontSize: density === "compact" ? 13.5 : 14.5, fontWeight: 600, margin: 0 }}>{e.role} <span style={{ fontWeight: 400, color: palette.secondary }}>— {e.company}</span></h3>
-                <span style={{ fontSize: 11.5, color: "#888", fontWeight: 400 }}>{e.start} – {e.end || "Actualidad"}</span>
+                <span style={{ fontSize: 11.5, color: "#888", fontWeight: 400, whiteSpace: "nowrap", marginLeft: 10 }}>{e.start} – {e.end || "Actualidad"}</span>
               </div>
               {e.roleSummary && (
                 <p style={{ fontSize: density === "compact" ? 11.5 : 12, lineHeight: 1.5, color: "#555", margin: "4px 0 6px", fontStyle: "italic" }}>
@@ -1514,13 +1518,21 @@ function TplNordico({ data, palette, font, density, visible }) {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: density === "compact" ? 32 : 48 }}>
-        <div style={{ flex: 1 }}>
+      {/* --- SECCIÓN INFERIOR A DOS COLUMNAS --- */}
+      <div style={{ 
+        display: "grid", 
+        gridTemplateColumns: "1fr 1fr", 
+        columnGap: density === "compact" ? "32px" : "48px",
+        alignItems: "start" 
+      }}>
+        
+        {/* COLUMNA IZQUIERDA (Educación & Personalizadas) */}
+        <div>
           {visible.education && (
-            <div className="page-block" style={{ marginBottom: sectionGap }}>
+            <div className="page-block exp-item" style={{ marginBottom: sectionGap, breakInside: "avoid" }}>
               <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Educación</h2>
               {data.education.map((ed) => (
-                <div key={ed.id} style={{ marginBottom: density === "compact" ? 8 : 12 }}>
+                <div key={ed.id} className="exp-item" style={{ marginBottom: density === "compact" ? 10 : 14 }}>
                   <h3 style={{ fontSize: density === "compact" ? 12.5 : 13, fontWeight: 600, margin: "0 0 2px" }}>{ed.degree}</h3>
                   <p style={{ fontSize: 11.5, color: palette.secondary, margin: "0 0 2px", fontWeight: 400 }}>{ed.institution}</p>
                   <p style={{ fontSize: 10.5, color: "#888", margin: 0, fontWeight: 400 }}>{ed.start} - {ed.end}</p>
@@ -1530,7 +1542,7 @@ function TplNordico({ data, palette, font, density, visible }) {
           )}
 
           {customSecs.map((cs) => (
-            <div key={cs.id} className="page-block" style={{ marginBottom: itemGap }}>
+            <div key={cs.id} className="page-block exp-item" style={{ marginBottom: sectionGap, breakInside: "avoid" }}>
               <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>{cs.title}</h2>
               <ul style={{ margin: 0, paddingLeft: 16, fontSize: density === "compact" ? 11.5 : 12, lineHeight: 1.5, color: "#555" }}>
                 {cs.items.filter(Boolean).map((item, idx) => <li key={idx} style={{ marginBottom: 3 }}>{item}</li>)}
@@ -1539,34 +1551,35 @@ function TplNordico({ data, palette, font, density, visible }) {
           ))}
         </div>
         
-        <div style={{ flex: 1 }}>
+        {/* COLUMNA DERECHA (Habilidades, Herramientas, Idiomas) */}
+        <div>
           {visible.skills && skillsList.length > 0 && (
-            <div className="page-block" style={{ marginBottom: density === "compact" ? 16 : 24 }}>
+            <div className="page-block exp-item" style={{ marginBottom: sectionGap, breakInside: "avoid" }}>
               <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Habilidades</h2>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 8px" }}>
                 {skillsList.map((s, i) => (
-                  <span key={i} style={{ background: palette.surface, color: palette.textDark, fontSize: density === "compact" ? 11 : 11.5, padding: "3px 8px", borderRadius: 4, border: `1px solid ${palette.accent}`, fontWeight: 400 }}>{s}</span>
+                  <span key={i} style={{ background: palette.surface, color: palette.textDark, fontSize: density === "compact" ? 11 : 11.5, padding: "4px 10px", borderRadius: 4, border: `1px solid ${palette.accent}`, fontWeight: 400, display: "inline-block" }}>{s}</span>
                 ))}
               </div>
             </div>
           )}
 
           {showTools && (
-            <div className="page-block" style={{ marginBottom: density === "compact" ? 16 : 24 }}>
+            <div className="page-block exp-item" style={{ marginBottom: sectionGap, breakInside: "avoid" }}>
               <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Herramientas & Software</h2>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 8px" }}>
                 {toolsList.map((t, i) => (
-                  <span key={i} style={{ background: "#FFF", color: palette.textDark, fontSize: density === "compact" ? 11 : 11.5, padding: "3px 8px", borderRadius: 4, border: `1px solid ${palette.secondary}50`, fontWeight: 400 }}>{t}</span>
+                  <span key={i} style={{ background: "#FFF", color: palette.textDark, fontSize: density === "compact" ? 11 : 11.5, padding: "4px 10px", borderRadius: 4, border: `1px solid ${palette.secondary}50`, fontWeight: 400, display: "inline-block" }}>{t}</span>
                 ))}
               </div>
             </div>
           )}
 
           {visible.languages && (
-            <div className="page-block">
+            <div className="page-block exp-item" style={{ breakInside: "avoid" }}>
               <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Idiomas</h2>
               {data.languages.filter(l=>l.name).map((l) => (
-                <div key={l.id} style={{ display: "flex", justifyContent: "space-between", fontSize: density === "compact" ? 11.5 : 12, marginBottom: 4, color: "#555" }}>
+                <div key={l.id} style={{ display: "flex", justifyContent: "space-between", fontSize: density === "compact" ? 11.5 : 12, marginBottom: 6, color: "#555" }}>
                   <span style={{ fontWeight: 500 }}>{l.name}</span>
                   <span style={{ fontWeight: 400 }}>{l.level}</span>
                 </div>
@@ -1574,6 +1587,7 @@ function TplNordico({ data, palette, font, density, visible }) {
             </div>
           )}
         </div>
+
       </div>
     </div>
   );
@@ -1593,7 +1607,7 @@ function TplBloque({ data, palette, font, density, visible }) {
   return (
     <div style={{ fontFamily: font, display: "flex", minHeight: "1123px", background: "#fff" }}>
       <div style={{ width: "32%", background: palette.surface, padding: paddingsLeft, color: palette.textDark, display: "flex", flexDirection: "column" }}>
-        <div className="page-block" style={{ textAlign: "center", marginBottom: sectionGap }}>
+        <div className="page-block page-header-avoid" style={{ textAlign: "center", marginBottom: sectionGap }}>
           {visible.photo && data.personal.photo && (
              <img src={data.personal.photo} alt="Perfil" style={{ width: density === "compact" ? 80 : 100, height: density === "compact" ? 80 : 100, borderRadius: "50%", objectFit: "cover", marginBottom: 14 }} />
           )}
@@ -1601,7 +1615,7 @@ function TplBloque({ data, palette, font, density, visible }) {
           <p style={{ fontSize: 12, fontWeight: 500, color: palette.primary, margin: 0 }}>{data.personal.title}</p>
         </div>
 
-        <div className="page-block" style={{ marginBottom: sectionGap }}>
+        <div className="page-block page-header-avoid" style={{ marginBottom: sectionGap }}>
           <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 10, letterSpacing: "1px" }}>Contacto</h3>
           {data.personal.location && <p style={{ fontSize: 11, margin: "0 0 6px" }}><IconPin color={palette.secondary} size={12} />{data.personal.location}</p>}
           {data.personal.phone && <p style={{ fontSize: 11, margin: "0 0 6px" }}><IconPhone color={palette.secondary} size={12} />{data.personal.phone}</p>}
@@ -1610,10 +1624,10 @@ function TplBloque({ data, palette, font, density, visible }) {
         </div>
 
         {visible.education && (
-          <div className="page-block" style={{ marginBottom: sectionGap }}>
+          <div className="page-block exp-item" style={{ marginBottom: sectionGap, breakInside: "avoid" }}>
             <h3 className="page-header-avoid" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 10, letterSpacing: "1px" }}>Educación</h3>
             {data.education.map((ed) => (
-              <div key={ed.id} style={{ marginBottom: 10 }}>
+              <div key={ed.id} className="exp-item" style={{ marginBottom: 10 }}>
                 <p style={{ fontSize: 11.5, fontWeight: 600, margin: "0 0 2px" }}>{ed.degree}</p>
                 <p style={{ fontSize: 10.5, color: palette.secondary, margin: "0 0 2px" }}>{ed.institution}</p>
                 <p style={{ fontSize: 10, color: "#888", margin: 0 }}>{ed.start} - {ed.end}</p>
@@ -1623,7 +1637,7 @@ function TplBloque({ data, palette, font, density, visible }) {
         )}
 
         {visible.languages && (
-          <div className="page-block">
+          <div className="page-block exp-item" style={{ breakInside: "avoid" }}>
             <h3 className="page-header-avoid" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: palette.secondary, borderBottom: `1px solid ${palette.accent}`, paddingBottom: 6, marginBottom: 10, letterSpacing: "1px" }}>Idiomas</h3>
             {data.languages.filter(l=>l.name).map((l) => (
               <div key={l.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 4 }}>
@@ -1637,7 +1651,7 @@ function TplBloque({ data, palette, font, density, visible }) {
       
       <div style={{ width: "68%", padding: paddingsRight, color: palette.textDark }}>
         {visible.summary && data.summary && (
-          <div className="page-block" style={{ marginBottom: sectionGap }}>
+          <div className="page-block exp-item" style={{ marginBottom: sectionGap }}>
             <h2 style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 10, letterSpacing: "1px" }}>Perfil Profesional</h2>
             <p style={{ fontSize: density === "compact" ? 12 : 13, lineHeight: 1.6, color: "#4A4A4A", margin: 0 }}>{data.summary}</p>
           </div>
@@ -1664,29 +1678,29 @@ function TplBloque({ data, palette, font, density, visible }) {
         )}
 
         {visible.skills && skillsList.length > 0 && (
-          <div className="page-block" style={{ marginBottom: 20 }}>
+          <div className="page-block exp-item" style={{ marginBottom: 20, breakInside: "avoid" }}>
             <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 12, letterSpacing: "1px" }}>Habilidades</h2>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 8px" }}>
               {skillsList.map((s, i) => (
-                <span key={i} style={{ border: `1px solid ${palette.accent}`, color: palette.textDark, fontSize: 11, fontWeight: 400, padding: "3px 8px", borderRadius: 4 }}>{s}</span>
+                <span key={i} style={{ border: `1px solid ${palette.accent}`, color: palette.textDark, fontSize: 11, fontWeight: 400, padding: "4px 10px", borderRadius: 4, display: "inline-block" }}>{s}</span>
               ))}
             </div>
           </div>
         )}
 
         {showTools && (
-          <div className="page-block" style={{ marginBottom: 20 }}>
+          <div className="page-block exp-item" style={{ marginBottom: 20, breakInside: "avoid" }}>
             <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 12, letterSpacing: "1px" }}>Herramientas & Software</h2>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 8px" }}>
               {toolsList.map((t, i) => (
-                <span key={i} style={{ background: palette.surface, border: `1px solid ${palette.accent}`, color: palette.textDark, fontSize: 11, fontWeight: 400, padding: "3px 8px", borderRadius: 4 }}>{t}</span>
+                <span key={i} style={{ background: palette.surface, border: `1px solid ${palette.accent}`, color: palette.textDark, fontSize: 11, fontWeight: 400, padding: "4px 10px", borderRadius: 4, display: "inline-block" }}>{t}</span>
               ))}
             </div>
           </div>
         )}
 
         {customSecs.map((cs) => (
-          <div key={cs.id} className="page-block" style={{ marginBottom: 20 }}>
+          <div key={cs.id} className="page-block exp-item" style={{ marginBottom: 20, breakInside: "avoid" }}>
             <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 12, letterSpacing: "1px" }}>{cs.title}</h2>
             <ul style={{ margin: 0, paddingLeft: 16, fontSize: density === "compact" ? 11.5 : 12.5, lineHeight: 1.5, color: "#555" }}>
               {cs.items.filter(Boolean).map((item, idx) => <li key={idx} style={{ marginBottom: 3 }}>{item}</li>)}
@@ -1707,15 +1721,15 @@ function TplATS({ data, density, visible }) {
 
   return (
     <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#222", padding: density === "compact" ? "30px" : "40px", fontSize: density === "compact" ? 12 : 13, lineHeight: 1.5, background: "#fff" }}>
-      <div className="page-block">
+      <div className="page-block page-header-avoid">
         <h1 style={{ fontSize: density === "compact" ? 16 : 18, fontWeight: 700, margin: "0 0 4px", textAlign: "center", textTransform: "uppercase" }}>{data.personal.name || "NOMBRE APELLIDO"}</h1>
         <p style={{ margin: "0 0 6px", textAlign: "center", fontSize: 12.5 }}>{data.personal.title}</p>
         <p style={{ margin: "0 0 16px", fontSize: 11, textAlign: "center", color: "#555" }}>{[data.personal.location, data.personal.email, data.personal.phone, data.personal.linkedin].filter(Boolean).join(" | ")}</p>
       </div>
       
       {visible.summary && data.summary && (
-        <div className="page-block">
-          <h2 style={{ fontSize: 11.5, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 3, marginBottom: 6, textTransform: "uppercase" }}>Resumen Profesional</h2>
+        <div className="page-block exp-item">
+          <h2 className="page-header-avoid" style={{ fontSize: 11.5, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 3, marginBottom: 6, textTransform: "uppercase" }}>Resumen Profesional</h2>
           <p style={{ marginBottom: 12 }}>{data.summary}</p>
         </div>
       )}
@@ -1734,15 +1748,19 @@ function TplATS({ data, density, visible }) {
       )}
       
       {visible.education && (
-        <div className="page-block" style={{ marginBottom: 12 }}>
+        <div className="page-block exp-item" style={{ marginBottom: 12, breakInside: "avoid" }}>
           <h2 className="page-header-avoid" style={{ fontSize: 11.5, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 3, marginBottom: 6, marginTop: 12, textTransform: "uppercase" }}>Educación</h2>
-          {data.education.map((ed) => (<p key={ed.id} style={{ margin: "0 0 4px", fontWeight: 600 }}>{ed.degree}, {ed.institution} <span style={{ fontWeight: 400 }}>({ed.start} - {ed.end})</span></p>))}
+          {data.education.map((ed) => (
+            <div key={ed.id} className="exp-item">
+               <p style={{ margin: "0 0 4px", fontWeight: 600 }}>{ed.degree}, {ed.institution} <span style={{ fontWeight: 400 }}>({ed.start} - {ed.end})</span></p>
+            </div>
+          ))}
         </div>
       )}
       
       {(visible.skills || showTools || visible.languages) && (
-        <div className="page-block" style={{ marginTop: 12 }}>
-          <h2 style={{ fontSize: 11.5, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 3, marginBottom: 6, textTransform: "uppercase" }}>Habilidades, Herramientas e Idiomas</h2>
+        <div className="page-block exp-item" style={{ marginTop: 12, breakInside: "avoid" }}>
+          <h2 className="page-header-avoid" style={{ fontSize: 11.5, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 3, marginBottom: 6, textTransform: "uppercase" }}>Habilidades, Herramientas e Idiomas</h2>
           {visible.skills && skillsList.length > 0 && <p style={{ margin: "0 0 4px" }}><strong>Habilidades:</strong> {skillsList.join(", ")}</p>}
           {showTools && <p style={{ margin: "0 0 4px" }}><strong>Herramientas / Software:</strong> {toolsList.join(", ")}</p>}
           {visible.languages && <p style={{ margin: "0 0 4px" }}><strong>Idiomas:</strong> {data.languages.filter(l=>l.name).map(l => `${l.name} (${l.level})`).join(", ")}</p>}
@@ -1750,8 +1768,8 @@ function TplATS({ data, density, visible }) {
       )}
 
       {customSecs.map((cs) => (
-        <div key={cs.id} className="page-block" style={{ marginTop: 12 }}>
-          <h2 style={{ fontSize: 11.5, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 3, marginBottom: 6, textTransform: "uppercase" }}>{cs.title}</h2>
+        <div key={cs.id} className="page-block exp-item" style={{ marginTop: 12, breakInside: "avoid" }}>
+          <h2 className="page-header-avoid" style={{ fontSize: 11.5, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 3, marginBottom: 6, textTransform: "uppercase" }}>{cs.title}</h2>
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {cs.items.filter(Boolean).map((item, idx) => <li key={idx} style={{ marginBottom: 2 }}>{item}</li>)}
           </ul>
@@ -1760,3 +1778,4 @@ function TplATS({ data, density, visible }) {
     </div>
   );
 }
+
