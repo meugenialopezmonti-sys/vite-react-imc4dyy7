@@ -1459,7 +1459,7 @@ function CVPreview({ data, templateId, palette, font, density, visible }) {
   return <TplNordico data={data} palette={palette} font={font} density={density} visible={visible} />;
 }
 
-/* 1. NÓRDICO MINIMALISTA (CON SALTOS DE PÁGINA CORREGIDOS USANDO TABLA) */
+/* 1. NÓRDICO MINIMALISTA (CON SALTOS DE PÁGINA CORREGIDOS USANDO TABLA Y ATS-FRIENDLY SKILLS) */
 function TplNordico({ data, palette, font, density, visible }) {
   const toolsList = skillNames(data.tools);
   const skillsList = skillNames(data.skills);
@@ -1561,9 +1561,12 @@ function TplNordico({ data, palette, font, density, visible }) {
               {visible.skills && skillsList.length > 0 && (
                 <div className="avoid-break" style={{ marginBottom: sectionGap }}>
                   <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Habilidades</h2>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 8px" }}>
+                  <div style={{ fontSize: density === "compact" ? 11.5 : 12, color: palette.textDark, lineHeight: 1.6 }}>
                     {skillsList.map((s, i) => (
-                      <span key={i} style={{ background: palette.surface, color: palette.textDark, fontSize: density === "compact" ? 11 : 11.5, padding: "4px 10px", borderRadius: 4, border: `1px solid ${palette.accent}`, fontWeight: 400, display: "inline-block" }}>{s}</span>
+                      <span key={i}>
+                        {s}
+                        {i < skillsList.length - 1 && <span style={{ color: palette.secondary, margin: "0 6px" }}>•</span>}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -1572,9 +1575,12 @@ function TplNordico({ data, palette, font, density, visible }) {
               {showTools && (
                 <div className="avoid-break" style={{ marginBottom: sectionGap }}>
                   <h2 className="page-header-avoid" style={{ fontSize: 12.5, fontWeight: 600, color: palette.primary, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, paddingBottom: 6, borderBottom: `1px solid ${palette.accent}` }}>Herramientas & Software</h2>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 8px" }}>
+                  <div style={{ fontSize: density === "compact" ? 11.5 : 12, color: palette.textDark, lineHeight: 1.6 }}>
                     {toolsList.map((t, i) => (
-                      <span key={i} style={{ background: "#FFF", color: palette.textDark, fontSize: density === "compact" ? 11 : 11.5, padding: "4px 10px", borderRadius: 4, border: `1px solid ${palette.secondary}50`, fontWeight: 400, display: "inline-block" }}>{t}</span>
+                      <span key={i}>
+                        {t}
+                        {i < toolsList.length - 1 && <span style={{ color: palette.secondary, margin: "0 6px" }}>•</span>}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -1600,7 +1606,7 @@ function TplNordico({ data, palette, font, density, visible }) {
   );
 }
 
-/* 2. BLOQUE SUTIL (CON SALTOS CORREGIDOS) */
+/* 2. BLOQUE SUTIL (CON SALTOS CORREGIDOS Y ATS-FRIENDLY SKILLS) */
 function TplBloque({ data, palette, font, density, visible }) {
   const toolsList = skillNames(data.tools);
   const skillsList = skillNames(data.skills);
@@ -1691,9 +1697,12 @@ function TplBloque({ data, palette, font, density, visible }) {
             {visible.skills && skillsList.length > 0 && (
               <div className="avoid-break" style={{ marginBottom: 20 }}>
                 <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 12, letterSpacing: "1px" }}>Habilidades</h2>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 8px" }}>
+                <div style={{ fontSize: density === "compact" ? 11.5 : 12, color: palette.textDark, lineHeight: 1.6 }}>
                   {skillsList.map((s, i) => (
-                    <span key={i} style={{ border: `1px solid ${palette.accent}`, color: palette.textDark, fontSize: 11, fontWeight: 400, padding: "4px 10px", borderRadius: 4, display: "inline-block" }}>{s}</span>
+                    <span key={i}>
+                      {s}
+                      {i < skillsList.length - 1 && <span style={{ color: palette.secondary, margin: "0 6px" }}>•</span>}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -1702,9 +1711,12 @@ function TplBloque({ data, palette, font, density, visible }) {
             {showTools && (
               <div className="avoid-break" style={{ marginBottom: 20 }}>
                 <h2 className="page-header-avoid" style={{ fontSize: 13, fontWeight: 700, color: palette.primary, textTransform: "uppercase", marginBottom: 12, letterSpacing: "1px" }}>Herramientas & Software</h2>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 8px" }}>
+                <div style={{ fontSize: density === "compact" ? 11.5 : 12, color: palette.textDark, lineHeight: 1.6 }}>
                   {toolsList.map((t, i) => (
-                    <span key={i} style={{ background: palette.surface, border: `1px solid ${palette.accent}`, color: palette.textDark, fontSize: 11, fontWeight: 400, padding: "4px 10px", borderRadius: 4, display: "inline-block" }}>{t}</span>
+                    <span key={i}>
+                      {t}
+                      {i < toolsList.length - 1 && <span style={{ color: palette.secondary, margin: "0 6px" }}>•</span>}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -1774,8 +1786,8 @@ function TplATS({ data, density, visible }) {
       {(visible.skills || showTools || visible.languages) && (
         <div className="avoid-break" style={{ marginTop: 12 }}>
           <h2 className="page-header-avoid" style={{ fontSize: 11.5, fontWeight: 700, borderBottom: "1px solid #222", paddingBottom: 3, marginBottom: 6, textTransform: "uppercase" }}>Habilidades, Herramientas e Idiomas</h2>
-          {visible.skills && skillsList.length > 0 && <p style={{ margin: "0 0 4px" }}><strong>Habilidades:</strong> {skillsList.join(", ")}</p>}
-          {showTools && <p style={{ margin: "0 0 4px" }}><strong>Herramientas / Software:</strong> {toolsList.join(", ")}</p>}
+          {visible.skills && skillsList.length > 0 && <p style={{ margin: "0 0 4px" }}><strong>Habilidades:</strong> {skillsList.join(" • ")}</p>}
+          {showTools && <p style={{ margin: "0 0 4px" }}><strong>Herramientas / Software:</strong> {toolsList.join(" • ")}</p>}
           {visible.languages && <p style={{ margin: "0 0 4px" }}><strong>Idiomas:</strong> {data.languages.filter(l=>l.name).map(l => `${l.name} (${l.level})`).join(", ")}</p>}
         </div>
       )}
