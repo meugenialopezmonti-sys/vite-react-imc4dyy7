@@ -1341,7 +1341,7 @@ function LetterNordico({ cvData, letter, palette, font, density }) {
       <div className="page-block page-header-avoid" style={{ borderBottom: `1px solid ${palette.accent}`, paddingBottom: density === "compact" ? 16 : 24, marginBottom: sectionGap }}>
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           {cvData.personal.photo && (
-            <img src={cvData.personal.photo} alt="Perfil" style={{ width: density === "compact" ? 68 : 80, height: density === "compact" ? 68 : 80, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+            <img src={cvData.personal.photo} alt="Perfil" style={{ width: density === "compact" ? 100 : 115, height: density === "compact" ? 100 : 115, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
           )}
           <div>
             <h1 style={{ fontSize: density === "compact" ? 26 : 30, fontWeight: 600, margin: "0 0 4px", color: palette.textDark, letterSpacing: "-0.5px" }}>{cvData.personal.name || "Nombre Apellido"}</h1>
@@ -1478,7 +1478,7 @@ function TplNordico({ data, palette, font, density, visible }) {
       <div className="page-block page-header-avoid" style={{ borderBottom: `1px solid ${palette.accent}`, paddingBottom: density === "compact" ? 16 : 24, marginBottom: sectionGap }}>
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           {visible.photo && data.personal.photo && (
-            <img src={data.personal.photo} alt="Perfil" style={{ width: density === "compact" ? 68 : 80, height: density === "compact" ? 68 : 80, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+            <img src={data.personal.photo} alt="Perfil" style={{ width: density === "compact" ? 100 : 115, height: density === "compact" ? 100 : 115, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
           )}
           <div>
             <h1 style={{ fontSize: density === "compact" ? 26 : 30, fontWeight: 600, margin: "0 0 4px", color: palette.textDark, letterSpacing: "-0.5px" }}>{data.personal.name || "Nombre Apellido"}</h1>
